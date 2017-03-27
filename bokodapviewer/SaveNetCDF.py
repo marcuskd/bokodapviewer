@@ -1,38 +1,45 @@
+'''SaveNetCDF function definition'''
+
 from netCDF4 import Dataset
 from datetime import datetime
 
-def SaveNetCDF(data,dimNames,outputFilePath):
+
+def SaveNetCDF(data, dim_names, output_file_path):
 
     '''
     Function to save variables to a NetCDF4 file.
     '''
 
-    dt = datetime.now()
-    fname = outputFilePath + '/' + 'bokodapviewer-' + str(dt.year) + '-' + '{:02}'.format(dt.month) + '-' + \
-    '{:02}'.format(dt.day) + '-' + '{:02}'.format(dt.hour) + '-' + '{:02}'.format(dt.minute) + '-' + \
-    '{:02}'.format(dt.second) + '.nc'
+    dat = datetime.now()
+    fname = output_file_path + '/' + 'bokodapviewer-' + str(dat.year) + '-' + \
+        '{:02}'.format(dat.month) + '-' + \
+        '{:02}'.format(dat.day) + '-' + '{:02}'.format(dat.hour) + '-' + \
+        '{:02}'.format(dat.minute) + '-' + \
+        '{:02}'.format(dat.second) + '.nc'
 
     try:
-        rootGrp = Dataset(fname,'w',format='NETCDF4')
+        root_grp = Dataset(fname, 'w', format='NETCDF4')
     except:
         msg = '<font color="red">Error: output file could not be opened</font>'
         return msg
 
     # Create dimensions and coordinate variables
-    for d in dimNames:
-        dims = data[d].size
-        rootGrp.createDimension(d,dims)
-        var = rootGrp.createVariable(d,data[d].dtype,(d),endian = 'native')
-        var[:] = data[d].copy()
+    for dim in dim_names:
+        dims = data[dim].size
+        root_grp.createDimension(dim, dims)
+        var = root_grp.createVariable(dim, data[dim].dtype,
+                                      (dim), endian='native')
+        var[:] = data[dim].copy()
 
     # Create data variable
-    for d in data:
-        if d not in dimNames:
-            dims = data[d].size
-            var = rootGrp.createVariable(d,data[d].dtype,tuple(dimNames),endian = 'native')
-            var[:] = data[d].copy()
+    for var in data:
+        if var not in dim_names:
+            dims = data[var].size
+            vari = root_grp.createVariable(var, data[var].dtype,
+                                           tuple(dim_names), endian='native')
+            vari[:] = data[var].copy()
 
-    rootGrp.close()
+    root_grp.close()
 
     msg = '<font color="green">Finished.</font>'
     return msg

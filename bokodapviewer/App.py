@@ -1,6 +1,10 @@
-import numpy
+'''Main bokodapviewer application class definition'''
 
+import os
+from collections import OrderedDict
 import xml.etree.ElementTree as et
+
+import numpy
 
 from bokodapviewer import SaveNetCDF
 
@@ -20,552 +24,641 @@ from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import Figure
 from bokeh.io import curdoc
 
-from collections import OrderedDict
 from numpy import float32
 
-import os
 
 class App():
 
     '''
-    A simple OpenDAP data viewer using Bokeh. Run with the bokeh server at the command line:
-    bokeh serve --show App.py
+    A simple OpenDAP data viewer using Bokeh.
+    Run with the bokeh server at the command line: bokeh serve --show App.py
 
-    Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be loaded and displayed.
-    Select a variable (select a row in the DDS table) and press the 'Get variable details' button.
-    The DAS and available dimensions will be displayed. Edit the data dimensions as required and
-    press the 'Get plot options' button. Select the required plot option in the drop down and
-    press the 'Get data' button. The data will be loaded and displayed under the Data Visualisation
-    tab.
-    
-    When viewing the data the z axis limits can be fixed and all three axes can be reversed using
-    the controls below the plot. The 'Update Display' button must be pressed to update the plot with
-    the new settings.
-    
-    The data can be saved to a NetCDF file using the 'Save to netCDF' button. If no file path is
-    specified the default one in the config file is used. A time-stamped file name is assigned.
+    Display data with the following steps:
+    1. Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be
+    loaded and displayed.
+    2. Select a variable (select a row in the DDS table) and press the
+    'Get variable details' button. The DAS and available dimensions will be
+    displayed.
+    3. Edit the data dimensions as required and press the 'Get plot options'
+    button.
+    4. Select the required plot option in the drop down and press the
+    'Get data' button. The data will be loaded and displayed under the
+    Data Visualisation tab.
 
-    Attributes such as scale factors, offsets, missing and fill values are automatically applied.
-    The corresponding names are stored in the config file. More than one can be stored, e.g. simply
-    add a config line <ScaleFactorName>new_scale_factor</ScaleFactorName> to add the scale factor
-    name new_scale_factor. More than one may be needed if different DAS have different names for
-    the same thing.
+    When viewing the data the z axis limits can be fixed and all three axes
+    can be reversed using the controls below the plot. The 'Update Display'
+    button must be pressed to update the plot with the new settings.
 
-    Other config file settings include the table and plot sizes and whether or not a plot cursor
-    readout is required. The app can cope with proxy servers - create a simple text file with
-    the proxy details (see the sodapclient package for the structure) and include the file path
-    in the config file.
+    The data can be saved to a NetCDF file using the 'Save to netCDF' button.
+    If no file path is specified the default one in the config file is used.
+    A time-stamped file name is assigned.
+
+    Attributes such as scale factors, offsets, missing and fill values are
+    automatically applied. The corresponding names are stored in the config
+    file. More than one can be stored, e.g. simply add a config line
+    <ScaleFactorName>new_scale_factor</ScaleFactorName> to add the scale factor
+    name new_scale_factor. More than one may be needed if different DAS have
+    different names for the same thing.
+
+    Other config file settings include the table and plot sizes and whether or
+    not a plot cursor readout is required. The app can cope with proxy servers:
+    create a simple text file with the proxy details (see the sodapclient
+    package for the structure) and include the file path in the config file.
     '''
 
     def __init__(self):
 
-        self.configFile = 'Config.xml'
+        self.config_file = 'Config.xml'
 
         # Plot sizes
 
-        self.mainPlotSize = [None,None]
-        self.linePlotSize = [None,None]
+        self.main_plot_size = [None, None]
+        self.line_plot_size = [None, None]
 
         # Dictionary of attribute names for scale factors etc.
-        self.AttrNames = {'ScaleFactorName':[],'OffsetName':[],'FillValueName':[],'MissingValueName':[]}
+        self.attr_names = {'ScaleFactorName': [], 'OffsetName': [],
+                           'FillValueName': [], 'MissingValueName': []}
 
         # Read the configuration file to get data sources etc
-        self.GetConfig()
+        self.get_config()
 
-        # Set up the GUI
-        self.SetUpGUI()
+        # Set up the gui
+        self.setup_gui()
 
-    def GetConfig(self):
+    def get_config(self):
 
-        root = et.parse(self.configFile).getroot()
+        '''Read in the xml configuration file'''
+
+        root = et.parse(self.config_file).getroot()
 
         for child in root:
 
-            if child.tag == 'ProxyFileName': proxyFileName = child.text
-            if proxyFileName == 'None': proxyFileName = None
+            if child.tag == 'ProxyFileName':
+                proxy_file_name = child.text
+            if proxy_file_name == 'None':
+                proxy_file_name = None
 
-            if child.tag == 'OutputFilePath': self.outputFilePath = child.text
+            if child.tag == 'OutputFilePath':
+                self.output_file_path = child.text
 
-            if child.tag == 'ColourMapPath': self.colMapPath = child.text
+            if child.tag == 'ColourMapPath':
+                self.col_map_path = child.text
 
             if child.tag == 'TableSize':
-                self.tableSize = [int(child.attrib['height']),int(child.attrib['width'])]
+                self.table_size = [int(child.attrib['height']),
+                                   int(child.attrib['width'])]
             if child.tag == 'MainPlotSize':
-                self.mainPlotSize = [int(child.attrib['height']),int(child.attrib['width'])]
+                self.main_plot_size = [int(child.attrib['height']),
+                                       int(child.attrib['width'])]
             if child.tag == 'LinePlotSize':
-                self.linePlotSize = [int(child.attrib['height']),int(child.attrib['width'])]
+                self.line_plot_size = [int(child.attrib['height']),
+                                       int(child.attrib['width'])]
 
-            if child.tag in self.AttrNames.keys():
-                if child.text not in self.AttrNames[child.tag]:
-                    self.AttrNames[child.tag].append(child.text)
+            if child.tag in self.attr_names.keys():
+                if child.text not in self.attr_names[child.tag]:
+                    self.attr_names[child.tag].append(child.text)
 
             if child.tag == 'CursorReadout2D':
-                if child.text == 'Off': self.hoverdisp2D = False
-                else: self.hoverdisp2D = True
+                if child.text == 'Off':
+                    self.hoverdisp2d = False
+                else:
+                    self.hoverdisp2d = True
 
             if child.tag == 'CursorReadout3D':
-                if child.text == 'Off': self.hoverdisp3D = False
-                else: self.hoverdisp3D = True
+                if child.text == 'Off':
+                    self.hoverdisp3d = False
+                else:
+                    self.hoverdisp3d = True
 
-    def SetUpGUI(self):
+    def setup_gui(self):
 
-        self.URL = TextInput(title = 'OpenDAP URL:')
-        self.openBtn = Button(label = 'Open URL',button_type = 'primary')
-        self.openBtn.on_click(self.OpenURL)
+        '''Set up the GUI elements'''
+
+        self.url = TextInput(title='OpenDAP URL:')
+        self.open_btn = Button(label='Open URL', button_type='primary')
+        self.open_btn.on_click(self.open_url)
 
         # Set up the data and plot selection tables (initially blank)
 
         # DDS table
 
-        od = OrderedDict()
-        od['Variable Name'] = []
-        od['Type'] = []
-        od['Dimensions'] = []
-        od['Dimension Names'] = []
-        self.dsDDS = ColumnDataSource(od)
+        odt = OrderedDict()
+        odt['Variable Name'] = []
+        odt['Type'] = []
+        odt['Dimensions'] = []
+        odt['Dimension Names'] = []
+        self.ds_dds = ColumnDataSource(odt)
 
         cols = []
-        for v in iter(od):
-            cols.append(TableColumn(title = v,field = v))
-        tDDS = DataTable(source = self.dsDDS, columns = cols, selectable = True, sortable = False,
-                         height = self.tableSize[0], width = self.tableSize[1])
+        for item in iter(odt):
+            cols.append(TableColumn(title=item, field=item))
+        dds_table = DataTable(source=self.ds_dds, columns=cols, selectable=True,
+                              sortable=False, height=self.table_size[0],
+                              width=self.table_size[1])
 
         # DAS table
 
-        od = OrderedDict()
-        od['Attribute Name'] = []
-        od['Type'] = []
-        od['Value'] = []
-        self.dsDAS = ColumnDataSource(od)
+        odt = OrderedDict()
+        odt['Attribute Name'] = []
+        odt['Type'] = []
+        odt['Value'] = []
+        self.ds_das = ColumnDataSource(odt)
 
         cols = []
-        for v in iter(od):
-            cols.append(TableColumn(title = v,field = v))
-        tDAS = DataTable(source = self.dsDAS, columns = cols, selectable = False, sortable = False,
-                         height = self.tableSize[0], width = self.tableSize[1])
+        for item in iter(odt):
+            cols.append(TableColumn(title=item, field=item))
+        das_table = DataTable(source=self.ds_das, columns=cols,
+                              selectable=False, sortable=False,
+                              height=self.table_size[0],
+                              width=self.table_size[1])
 
         # Selection table
 
-        od = OrderedDict()
-        od['Dimension'] = []
-        od['First Index'] = []
-        od['Interval'] = []
-        od['Last Index'] = []
-        self.dsSel = ColumnDataSource(od)
+        odt = OrderedDict()
+        odt['Dimension'] = []
+        odt['First Index'] = []
+        odt['Interval'] = []
+        odt['Last Index'] = []
+        self.ds_select = ColumnDataSource(odt)
 
         cols = []
-        for v in iter(od):
-            if v == 'Dimension':
-                cols.append(TableColumn(title = v,field = v))
+        for item in iter(odt):
+            if item == 'Dimension':
+                cols.append(TableColumn(title=item, field=item))
             else:
-                cols.append(TableColumn(title = v,field = v,editor = IntEditor(step=1)))
-        tSel = DataTable(source = self.dsSel,columns = cols,selectable = True,sortable = True,editable=True,
-                         height = self.tableSize[0], width = self.tableSize[1])
+                cols.append(TableColumn(title=item, field=item,
+                                        editor=IntEditor(step=1)))
+        select_table = DataTable(source=self.ds_select, columns=cols,
+                                 selectable=True, sortable=True, editable=True,
+                                 height=self.table_size[0],
+                                 width=self.table_size[1])
 
         # Selection and Visualisation panels
 
-        self.getVarBtn = Button(label = 'Get variable details',disabled = True)
-        self.getVarBtn.on_click(self.GetVar)
+        self.get_var_btn = Button(label='Get variable details', disabled=True)
+        self.get_var_btn.on_click(self.get_var)
 
-        self.pSel = Paragraph(text='No variable selected.')
-        
-        self.getPlotsBtn = Button(label = 'Get plot options',disabled = True)
-        self.getPlotsBtn.on_click(self.GetPlots)
+        self.p_sel = Paragraph(text='No variable selected.')
 
-        self.plotOpts = Select(options = [])
+        self.get_pltops_btn = Button(label='Get plot options', disabled=True)
+        self.get_pltops_btn.on_click(self.get_plot_opts)
 
-        self.getDataBtn = Button(label = 'Get data',button_type = 'primary',disabled = True)
-        self.getDataBtn.on_click(self.GetData)
-        
-        self.endianCheckBox = CheckboxGroup(labels = ['Big Endian'], active = [0])
+        self.plot_ops = Select(options=[])
 
-        self.revXCheckBox = CheckboxGroup(labels = ['Reverse x axis'], active = [])
-        self.revYCheckBox = CheckboxGroup(labels = ['Reverse y axis'], active = [])
-        self.revZCheckBox = CheckboxGroup(labels = ['Reverse z axis'], active = [])
+        self.get_data_btn = Button(label='Get data', button_type='primary',
+                                   disabled=True)
+        self.get_data_btn.on_click(self.get_data)
 
-        self.zMin = TextInput(title = 'z minimum:')
-        self.zMax = TextInput(title = 'z maximum:')
+        self.endian_chkbox = CheckboxGroup(labels=['Big Endian'], active=[0])
 
-        self.saveBtn = Button(label = 'Save to NetCDF',disabled = True)
-        self.saveBtn.on_click(self.Save)
+        self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[])
+        self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[])
+        self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[])
 
-        self.statBox = Div(text = '<font color="green">Initialised OK</font>',width = 800)
+        self.zmin = TextInput(title='z minimum:')
+        self.zmax = TextInput(title='z maximum:')
 
-        self.updateBtn = Button(label = 'Update Display')
-        self.updateBtn.on_click(self.DisplayData)
+        self.save_btn = Button(label='Save to NetCDF', disabled=True)
+        self.save_btn.on_click(self.save)
 
-        ws1 = Row(children=[Column(Div(text = '<font color="blue">Dataset Descriptor Structure'),
-                                   tDDS),Div(),Column(self.getVarBtn,self.pSel)])
-        ws2 = Row(children=[Column(Div(text = '<font color="blue">Dataset Attribute Structure'),
-                                   tDAS),Div(),
-                                   Column(Div(text = '<font color="blue">Dimensions'),tSel)])
-        ws3 = Row(children=[self.getPlotsBtn,self.getDataBtn,self.endianCheckBox])
-        ws4 = Row(children=[self.plotOpts])
-        wp1 = Row(children=[self.zMin,self.zMax])
-        wp2 = Row(children=[self.revXCheckBox,self.revYCheckBox,self.revZCheckBox])
-        wp3 = Row(children=[self.updateBtn])
-        wp4 = Row(self.saveBtn)
+        self.stat_box = Div(text='<font color="green">Initialised OK</font>',
+                            width=800)
 
-        selPanel = Panel(title = 'Data Selection',child = Column(ws1,ws2,ws3,ws4))
+        self.update_btn = Button(label='Update Display')
+        self.update_btn.on_click(self.display_data)
 
-        plotPanel = Panel(title = 'Data Visualisation',
-                          child = Column(Figure(toolbar_location = None),
-                                         wp1,wp2,wp3,WidgetBox(Div(text = '<hr>',width = 1320)),wp4))
+        ws1 = Row(children=[Column(Div(text='<font color="blue">Dataset Descriptor Structure'),
+                                   dds_table), Div(), Column(self.get_var_btn, self.p_sel)])
+        ws2 = Row(children=[Column(Div(text='<font color="blue">Dataset Attribute Structure'),
+                                   das_table), Div(),
+                            Column(Div(text='<font color="blue">Dimensions'), select_table)])
+        ws3 = Row(children=[self.get_pltops_btn, self.get_data_btn,
+                            self.endian_chkbox])
+        ws4 = Row(children=[self.plot_ops])
+        wp1 = Row(children=[self.zmin, self.zmax])
+        wp2 = Row(children=[self.revx_chkbox, self.revy_chkbox,
+                            self.revz_chkbox])
+        wp3 = Row(children=[self.update_btn])
+        wp4 = Row(self.save_btn)
 
-        self.Tabs = Tabs(tabs = [selPanel, plotPanel])
+        select_panel = Panel(title='Data Selection',
+                             child=Column(ws1, ws2, ws3, ws4))
 
-        self.GUI = Column(children = [WidgetBox(self.URL,width = 1450),
-                                      WidgetBox(self.openBtn),
-                                      WidgetBox(self.statBox),
-                                      WidgetBox(Div(text = '<hr>',width = 1320)),
-                                      self.Tabs])
+        plot_panel = Panel(title='Data Visualisation',
+                           child=Column(Figure(toolbar_location=None),
+                                        wp1, wp2, wp3,
+                                        WidgetBox(Div(text='<hr>',
+                                                      width=1320)), wp4))
 
-    def OpenURL(self):
+        self.tabs = Tabs(tabs=[select_panel, plot_panel])
 
-        self.statBox.text = '<font color="blue">Opening URL...</font>'
+        self.gui = Column(children=[WidgetBox(self.url, width=1450),
+                                    WidgetBox(self.open_btn),
+                                    WidgetBox(self.stat_box),
+                                    WidgetBox(Div(text='<hr>', width=1320)),
+                                    self.tabs])
+
+    def open_url(self):
+
+        '''Open the URL'''
+
+        self.stat_box.text = '<font color="blue">Opening URL...</font>'
 
         try:
-            self.odh = Handler(self.URL.value)
+            self.odh = Handler(self.url.value)
         except:
-            self.statBox.text = '<font color="red">Error: could not open URL</font>'
+            self.stat_box.text = \
+                '<font color="red">Error: could not open URL</font>'
             return
 
-        if self.odh.DDS is None:
-            self.statBox.text = '<font color="red">Error: no DDS found at URL</font>'
+        if self.odh.dds is None:
+            self.stat_box.text = \
+                '<font color="red">Error: no DDS found at URL</font>'
             return
 
-        varNames,varTypes,varDims,dimNames = [],[],[],[]
-        for v,a in sorted(self.odh.DDS.items()):
-            varNames.append(v)
-            varTypes.append(a[0])
-            varDims.append(a[1])
-            dimNames.append(a[2])
-        self.dsDDS.data['Variable Name'] = varNames
-        self.dsDDS.data['Type'] = varTypes
-        self.dsDDS.data['Dimensions'] = varDims
-        self.dsDDS.data['Dimension Names'] = dimNames
+        var_names, var_types, var_dims, dim_names = [], [], [], []
+        for item, attr in sorted(self.odh.dds.items()):
+            var_names.append(item)
+            var_types.append(attr[0])
+            var_dims.append(attr[1])
+            dim_names.append(attr[2])
+        self.ds_dds.data['Variable Name'] = var_names
+        self.ds_dds.data['Type'] = var_types
+        self.ds_dds.data['Dimensions'] = var_dims
+        self.ds_dds.data['Dimension Names'] = dim_names
 
-        self.getVarBtn.disabled = False
-        self.getPlotsBtn.disabled = True # Disable these to avoid mismatch between DDS and stored data
-        self.getDataBtn.disabled = True
+        self.get_var_btn.disabled = False
+        # Disable these to avoid mismatch between DDS and stored data
+        self.get_pltops_btn.disabled = True
+        self.get_data_btn.disabled = True
 
-        self.statBox.text = '<font color="green">URL opened OK.</font>'
+        self.stat_box.text = '<font color="green">URL opened OK.</font>'
 
-        self.Tabs.active = 0
+        self.tabs.active = 0
 
-    def GetVar(self):
+    def get_var(self):
 
-        sel = self.dsDDS.selected['1d']['indices']
+        '''Read variable attributes and dimensions'''
+
+        sel = self.ds_dds.selected['1d']['indices']
 
         if len(sel) > 0:
 
             # Attributes
 
-            self.varName = self.dsDDS.data['Variable Name'][sel[0]]
-            das = self.odh.DAS[self.varName]
-            aName,aType,aVal = [],[],[]
-            for a in das:
-                atrs = a.split()
-                aName.append(atrs[1])
-                aType.append(atrs[0])
-                aVal.append(atrs[2])
-            self.dsDAS.data['Attribute Name'] = aName
-            self.dsDAS.data['Type'] = aType
-            self.dsDAS.data['Value'] = aVal
+            self.var_name = self.ds_dds.data['Variable Name'][sel[0]]
+            das = self.odh.das[self.var_name]
+            attr_name, attr_type, attr_val = [], [], []
+            for attr in das:
+                atrs = attr.split()
+                attr_name.append(atrs[1])
+                attr_type.append(atrs[0])
+                attr_val.append(atrs[2])
+            self.ds_das.data['Attribute Name'] = attr_name
+            self.ds_das.data['Type'] = attr_type
+            self.ds_das.data['Value'] = attr_val
 
             # Selection
 
-            dvals = self.odh.DDS[self.varName][1]
-            dMax = []
-            for d in range(len(dvals)):
-                dMax.append(dvals[d] - 1)
-            dName = self.odh.DDS[self.varName][2]
-            self.dsSel.data['Dimension'] = dName
-            self.dsSel.data['First Index'] = [0]*len(dvals)
-            self.dsSel.data['Interval'] = [1]*len(dvals)
-            self.dsSel.data['Last Index'] = dMax
+            dvals = self.odh.dds[self.var_name][1]
+            dmax = []
+            for dim in range(len(dvals)):
+                dmax.append(dvals[dim] - 1)
+            dim_name = self.odh.dds[self.var_name][2]
+            self.ds_select.data['Dimension'] = dim_name
+            self.ds_select.data['First Index'] = [0]*len(dvals)
+            self.ds_select.data['Interval'] = [1]*len(dvals)
+            self.ds_select.data['Last Index'] = dmax
 
-            self.pSel.text = 'Variable: ' + self.varName
+            self.p_sel.text = 'Variable: ' + self.var_name
 
-            self.getPlotsBtn.disabled = False
-            self.getDataBtn.disabled = True # Disable to avoid mismatch
+            self.get_pltops_btn.disabled = False
+            self.get_data_btn.disabled = True  # Disable to avoid mismatch
 
-            self.statBox.text = '<font color="green">Variable selected.</font>'
+            self.stat_box.text = '<font color="green">Variable selected.</font>'
 
-    def GetPlots(self):
+    def get_plot_opts(self):
 
         '''
-        Get all the available plot options corresponding to the selected data dimensions.
+        Get all the available plot options corresponding to the
+        selected data dimensions.
         '''
 
-        sel = self.dsDDS.selected['1d']['indices'][0]
+        sel = self.ds_dds.selected['1d']['indices'][0]
 
         opts = []
-        optDims = []
-        nDims = len(self.dsSel.data['Dimension'])
-        if nDims == 1:
-            if self.dsDDS.data['Dimensions'][sel][0] > 1:
-                opts.append(self.varName + ' against index (line plot)')
-                optDims.append([0])
-                nA = 1
+        opt_dims = []
+        num_dims = len(self.ds_select.data['Dimension'])
+        if num_dims == 1:
+            if self.ds_dds.data['Dimensions'][sel][0] > 1:
+                opts.append(self.var_name + ' against index (line plot)')
+                opt_dims.append([0])
+                nav = 1
             else:
                 opts.append('None (single value)')
-                nA = 0
+                nav = 0
         else:
-            aDims = [False]*nDims
-            nA = 0
-            for d in range(nDims):
-                rMin = self.dsSel.data['First Index'][d]
-                rInt = self.dsSel.data['Interval'][d]
-                rMax = self.dsSel.data['Last Index'][d] + 1
-                if (rMax > rMin):
-                    l = list(range(rMin,rMax,rInt))
-                    if len(l) > 1:
-                        aDims[d] = True
-                        nA += 1
-            if nA > 0:
-                if (nA == 1):
-                    a = aDims.index(True)
-                    opts.append(self.varName + ' against ' + self.dsSel.data['Dimension'][a] + ' (line plot)')
-                    optDims = [a]
-                elif (nA == 2):
-                    for a in range(nDims):
-                        if aDims[a]:
-                            for b in range(nDims):
-                                if aDims[b] and (b != a):
-                                    opts.append(self.varName + ' against ' + \
-                                                self.dsSel.data['Dimension'][a] + ' and ' + \
-                                                self.dsSel.data['Dimension'][b] + ' (colour map)')
-                                    optDims.append([b,a])
-                elif (nA == 3):
-                    for a in range(nDims):
-                        if aDims[a]: # a will be slider dimension
-                            for b in range(nDims):
-                                if aDims[b] and (b != a):
-                                    for c in range(nDims):
-                                        if aDims[c] and (c != b) and (c != a):
-                                            optDims.append([a,c,b])
-                                            opts.append(self.varName + ' against ' + \
-                                                        self.dsSel.data['Dimension'][b] + ' and ' + \
-                                                        self.dsSel.data['Dimension'][c] + ' with ' + \
-                                                        self.dsSel.data['Dimension'][a] + ' as variable ' + \
+            av_dims = [False]*num_dims
+            nav = 0
+            for dim in range(num_dims):
+                rmin = self.ds_select.data['First Index'][dim]
+                rint = self.ds_select.data['Interval'][dim]
+                rmax = self.ds_select.data['Last Index'][dim] + 1
+                if rmax > rmin:
+                    tli = list(range(rmin, rmax, rint))
+                    if len(tli) > 1:
+                        av_dims[dim] = True
+                        nav += 1
+            if nav > 0:
+                if nav == 1:
+                    attr = av_dims.index(True)
+                    opts.append(self.var_name + ' against ' +
+                                self.ds_select.data['Dimension'][attr] +
+                                ' (line plot)')
+                    opt_dims = [attr]
+                elif nav == 2:
+                    for attr in range(num_dims):
+                        if av_dims[attr]:
+                            for dim in range(num_dims):
+                                if av_dims[dim] and (dim != attr):
+                                    opts.append(self.var_name + ' against ' +
+                                                self.ds_select.data['Dimension'][attr] + ' and ' +
+                                                self.ds_select.data['Dimension'][dim] + ' (colour map)')
+                                    opt_dims.append([dim, attr])
+                elif nav == 3:
+                    for attr in range(num_dims):
+                        if av_dims[attr]:  # attr will be slider dimension
+                            for dim in range(num_dims):
+                                if av_dims[dim] and (dim != attr):
+                                    for dim2 in range(num_dims):
+                                        if av_dims[dim2] and (dim2 != dim) and (dim2 != attr):
+                                            opt_dims.append([attr, dim2, dim])
+                                            opts.append(self.var_name + ' against ' +
+                                                        self.ds_select.data['Dimension'][dim] + ' and ' +
+                                                        self.ds_select.data['Dimension'][dim2] + ' with ' +
+                                                        self.ds_select.data['Dimension'][attr] + ' as variable ' +
                                                         '(colour map with slider)')
                 else:
                     opts.append('None (maximum 3 dimensions - please reduce others to singletons)')
             else:
                 opts.append('None (single value)')
 
-        self.plotOpts.options = opts
-        self.plotOpts.value = opts[0]
-        self.optDims = optDims
+        self.plot_ops.options = opts
+        self.plot_ops.value = opts[0]
+        self.opt_dims = opt_dims
 
-        if nA > 0:
-            self.getDataBtn.disabled = False
+        if nav > 0:
+            self.get_data_btn.disabled = False
 
-        self.statBox.text = '<font color="green">Plot options found.</font>'
+        self.stat_box.text = '<font color="green">Plot options found.</font>'
 
-    def GetData(self):
+    def get_data(self):
 
-        self.statBox.text = '<font color="blue">Getting data...</font>'
+        '''Get the variable data'''
 
-        self.data = {} # Clear the data dictionary
-        self.dimNames = [] # Clear the dimension names list
+        self.stat_box.text = '<font color="blue">Getting data...</font>'
 
-        if len(self.endianCheckBox.active) > 0:
-            byteOrdStr = '>'
+        self.data = {}  # Clear the data dictionary
+        self.dim_names = []  # Clear the dimension names list
+
+        if len(self.endian_chkbox.active) > 0:
+            byte_ord_str = '>'
         else:
-            byteOrdStr = '<'
+            byte_ord_str = '<'
 
-        ndims = len(self.odh.DDS[self.varName][2])
+        ndims = len(self.odh.dds[self.var_name][2])
 
-        if ndims == 1: # Dimension variable
+        if ndims == 1:  # Dimension variable
 
-            dimS = numpy.ndarray(shape=(1,3),dtype=numpy.dtype('int'))
-            dimS[0,0] = self.dsSel.data['First Index'][0]
-            dimS[0,1] = self.dsSel.data['Interval'][0]
-            dimS[0,2] = self.dsSel.data['Last Index'][0]
-            self.odh.GetVariable(self.varName,dimS,byteOrdStr)
-            self.data[self.varName] = numpy.ndarray(shape = self.odh.variables[self.varName].shape,dtype = numpy.dtype('float32'))
-            self.data[self.varName][:] = self.odh.variables[self.varName][:]
-            self.ApplyAttributes(self.varName) # Apply any attributes
-            self.dimNames.append(self.varName)
+            dim_vals = numpy.ndarray(shape=(1, 3), dtype=numpy.dtype('int'))
+            dim_vals[0, 0] = self.ds_select.data['First Index'][0]
+            dim_vals[0, 1] = self.ds_select.data['Interval'][0]
+            dim_vals[0, 2] = self.ds_select.data['Last Index'][0]
+            self.odh.get_variable(self.var_name, dim_vals, byte_ord_str)
+            self.data[self.var_name] = numpy.ndarray(shape=self.odh.variables[self.var_name].shape,
+                                                     dtype=numpy.dtype('float32'))
+            self.data[self.var_name][:] = self.odh.variables[self.var_name][:]
+            self.apply_attributes(self.var_name)  # Apply any attributes
+            self.dim_names.append(self.var_name)
 
-        else: # Data variable
+        else:  # Data variable
 
-            dimS = numpy.ndarray(shape=(ndims,3),dtype=numpy.dtype('int'))
+            dim_vals = numpy.ndarray(shape=(ndims, 3),
+                                     dtype=numpy.dtype('int'))
 
-            for n in range(ndims):
-                dimS[n,0] = self.dsSel.data['First Index'][n]
-                dimS[n,1] = self.dsSel.data['Interval'][n]
-                dimS[n,2] = self.dsSel.data['Last Index'][n]
+            for dim in range(ndims):
+                dim_vals[dim, 0] = self.ds_select.data['First Index'][dim]
+                dim_vals[dim, 1] = self.ds_select.data['Interval'][dim]
+                dim_vals[dim, 2] = self.ds_select.data['Last Index'][dim]
 
             # Get the variable
 
-            self.odh.GetVariable(self.varName,dimS,byteOrdStr)
-            self.data[self.varName] = numpy.ndarray(shape = self.odh.variables[self.varName].shape,dtype = float32)
-            self.data[self.varName][:] = self.odh.variables[self.varName][:]
-            self.ApplyAttributes(self.varName) # Apply any attributes
+            self.odh.get_variable(self.var_name, dim_vals, byte_ord_str)
+            self.data[self.var_name] = numpy.ndarray(shape=self.odh.variables[self.var_name].shape,
+                                                     dtype=float32)
+            self.data[self.var_name][:] = self.odh.variables[self.var_name][:]
+            self.apply_attributes(self.var_name)  # Apply any attributes
 
             # Get the map variables over the ranges required
 
-            dimSd = numpy.ndarray(shape=(1,3),dtype=numpy.dtype('int'))
-            for n in range(ndims):
-                dimSd[:] = dimS[n]
-                dimName = self.odh.DDS[self.varName][2][n]
-                self.odh.GetVariable(dimName,dimSd,byteOrdStr)
-                self.data[dimName] = numpy.ndarray(shape = self.odh.variables[dimName].shape,dtype = float32)
-                self.data[dimName][:] = self.odh.variables[dimName][:]
-                self.ApplyAttributes(dimName) # Apply any attributes
-                self.dimNames.append(dimName)
+            dim_data = numpy.ndarray(shape=(1, 3), dtype=numpy.dtype('int'))
+            for dim in range(ndims):
+                dim_data[:] = dim_vals[dim]
+                dim_name = self.odh.dds[self.var_name][2][dim]
+                self.odh.get_variable(dim_name, dim_data, byte_ord_str)
+                self.data[dim_name] = numpy.ndarray(shape=self.odh.variables[dim_name].shape,
+                                                    dtype=float32)
+                self.data[dim_name][:] = self.odh.variables[dim_name][:]
+                self.apply_attributes(dim_name)  # Apply any attributes
+                self.dim_names.append(dim_name)
 
-        ind = self.plotOpts.options.index(self.plotOpts.value)
-        self.plotDims = self.optDims[ind]
+        ind = self.plot_ops.options.index(self.plot_ops.value)
+        self.plot_dims = self.opt_dims[ind]
 
-        self.statBox.text = '<font color="green">Data downloaded.</font>'
+        self.stat_box.text = '<font color="green">Data downloaded.</font>'
 
-        self.saveBtn.disabled = False
+        self.save_btn.disabled = False
 
-        self.DisplayData()
+        self.display_data()
 
-    def ApplyAttributes(self,varName):
+    def apply_attributes(self, var_name):
 
-        attrList = self.odh.DAS[varName]
+        '''Apply the attributes'''
 
-        scaleFactor = numpy.nan
+        attr_list = self.odh.das[var_name]
+
+        scale_factor = numpy.nan
         offset = numpy.nan
-        fillValue = numpy.nan
-        missingValue = numpy.nan
-        for a in attrList:
-            aname = a.split()[1]
-            aval = a.split()[2]
-            if aname in self.AttrNames['ScaleFactorName']: scaleFactor = float(aval)
-            if aname in self.AttrNames['OffsetName']: offset = float(aval)
-            if aname in self.AttrNames['FillValueName']: fillValue = float(aval)
-            if aname in self.AttrNames['MissingValueName']: missingValue = float(aval)
+        fill_value = numpy.nan
+        missing_value = numpy.nan
+        for attr in attr_list:
+            attr_name = attr.split()[1]
+            attr_val = attr.split()[2]
+            if attr_name in self.attr_names['ScaleFactorName']:
+                scale_factor = float(attr_val)
+            if attr_name in self.attr_names['OffsetName']:
+                offset = float(attr_val)
+            if attr_name in self.attr_names['FillValueName']:
+                fill_value = float(attr_val)
+            if attr_name in self.attr_names['MissingValueName']:
+                missing_value = float(attr_val)
 
-        d = self.data[varName]
-        if not numpy.isnan(fillValue): d[d == fillValue] = numpy.nan
-        if not numpy.isnan(missingValue): d[d == missingValue] = numpy.nan
-        if not numpy.isnan(scaleFactor): d *= scaleFactor
-        if not numpy.isnan(offset): d += offset
+        data = self.data[var_name]
+        if not numpy.isnan(fill_value):
+            data[data == fill_value] = numpy.nan
+        if not numpy.isnan(missing_value):
+            data[data == missing_value] = numpy.nan
+        if not numpy.isnan(scale_factor):
+            data *= scale_factor
+        if not numpy.isnan(offset):
+            data += offset
 
-    def DisplayData(self):
+    def display_data(self):
 
-        self.statBox.text = '<font color="blue">Displaying data...</font>'
+        '''Display the data'''
 
-        revX = revY = revZ = False
-        if len(self.revXCheckBox.active) > 0: revX = True
-        if len(self.revYCheckBox.active) > 0: revY = True
-        if len(self.revZCheckBox.active) > 0: revZ = True
+        self.stat_box.text = '<font color="blue">Displaying data...</font>'
+
+        revx = revy = revz = False
+        if len(self.revx_chkbox.active) > 0:
+            revx = True
+        if len(self.revy_chkbox.active) > 0:
+            revy = True
+        if len(self.revz_chkbox.active) > 0:
+            revz = True
 
         # Find plot type
 
-        if len(self.plotDims) == 1: # Line plot
+        if len(self.plot_dims) == 1:  # Line plot
 
-            disp = Figure(x_axis_label = 'Index',y_axis_label = self.varName,
-                           plot_height = self.linePlotSize[0],plot_width = self.linePlotSize[0],
-                           tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
+            disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
+                          plot_height=self.line_plot_size[0],
+                          plot_width=self.line_plot_size[0],
+                          tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
 
-            disp.line(x = numpy.linspace(0,self.data[self.varName].size-1,self.data[self.varName].size),
-                      y = self.data[self.varName],line_color='blue',line_width=2,line_alpha=1)
-        
+            disp.line(x=numpy.linspace(0, self.data[self.var_name].size-1,
+                                       self.data[self.var_name].size),
+                      y=self.data[self.var_name],
+                      line_color='blue', line_width=2, line_alpha=1)
+
             disp.toolbar_location = 'above'
 
-            disp.title_text_font = disp.xaxis.axis_label_text_font = disp.yaxis.axis_label_text_font = 'garamond'
-            disp.xaxis.axis_label_text_font_size = disp.yaxis.axis_label_text_font_size = '10pt'
-            disp.title_text_font_style = disp.xaxis.axis_label_text_font_style = disp.yaxis.axis_label_text_font_style = 'bold'
+            disp.title_text_font = disp.xaxis.axis_label_text_font = \
+                disp.yaxis.axis_label_text_font = 'garamond'
+            disp.xaxis.axis_label_text_font_size = \
+                disp.yaxis.axis_label_text_font_size = '10pt'
+            disp.title_text_font_style = \
+                disp.xaxis.axis_label_text_font_style = \
+                disp.yaxis.axis_label_text_font_style = 'bold'
             disp.title_text_font_size = '8pt'
             disp.x_range.start = 0
-            disp.x_range.end = self.data[self.varName].size - 1
-            disp.y_range.start = self.data[self.varName][0]
-            disp.y_range.end = self.data[self.varName][-1]
-            if revX:
-                disp.x_range.start,disp.x_range.end = disp.x_range.end,disp.x_range.start
-            if revY:
-                disp.y_range.start,disp.y_range.end = disp.y_range.end,disp.y_range.start
+            disp.x_range.end = self.data[self.var_name].size - 1
+            disp.y_range.start = self.data[self.var_name][0]
+            disp.y_range.end = self.data[self.var_name][-1]
+            if revx:
+                disp.x_range.start, disp.x_range.end = \
+                    disp.x_range.end, disp.x_range.start
+            if revy:
+                disp.y_range.start, disp.y_range.end = \
+                    disp.y_range.end, disp.y_range.start
 
-        else: # Colourmaps
+        else:  # Colourmaps
 
-            if len(self.plotDims) == 2:
-                xName = self.dsSel.data['Dimension'][self.plotDims[1]]
-                yName = self.dsSel.data['Dimension'][self.plotDims[0]]
+            if len(self.plot_dims) == 2:
+                xname = self.ds_select.data['Dimension'][self.plot_dims[1]]
+                yname = self.ds_select.data['Dimension'][self.plot_dims[0]]
             else:
-                xName = self.dsSel.data['Dimension'][self.plotDims[2]]
-                yName = self.dsSel.data['Dimension'][self.plotDims[1]]
-                zName = self.dsSel.data['Dimension'][self.plotDims[0]]
+                xname = self.ds_select.data['Dimension'][self.plot_dims[2]]
+                yname = self.ds_select.data['Dimension'][self.plot_dims[1]]
+                zname = self.ds_select.data['Dimension'][self.plot_dims[0]]
 
-            allDims = self.data[self.varName].shape
-            tDims = [0]*len(allDims)
-            pdCount = 0
-            for n in range(len(tDims)):
-                if allDims[n] == 1:
-                    tDims[n] = n
+            all_dims = self.data[self.var_name].shape
+            t_dims = [0]*len(all_dims)
+            pd_count = 0
+            for dim in range(len(t_dims)):
+                if all_dims[dim] == 1:
+                    t_dims[dim] = dim
                 else:
-                    tDims[n] = self.plotDims[pdCount]
-                    pdCount += 1
+                    t_dims[dim] = self.plot_dims[pd_count]
+                    pd_count += 1
 
-            dataT = self.data[self.varName].copy().transpose(tDims)
-            dataT = numpy.squeeze(dataT)
+            data_t = self.data[self.var_name].copy().transpose(t_dims)
+            data_t = numpy.squeeze(data_t)
 
-            xT = self.data[xName].copy()
-            yT = self.data[yName].copy()
-            if revX: xT = numpy.flipud(xT)
-            if revY: yT = numpy.flipud(yT)
+            x_t = self.data[xname].copy()
+            y_t = self.data[yname].copy()
+            if revx:
+                x_t = numpy.flipud(x_t)
+            if revy:
+                y_t = numpy.flipud(y_t)
 
-            if revX or revY:
-                if len(self.plotDims) == 2:
-                    if revX: dataT = numpy.fliplr(dataT)
-                    if revY: dataT = numpy.flipud(dataT)
+            if revx or revy:
+                if len(self.plot_dims) == 2:
+                    if revx:
+                        data_t = numpy.fliplr(data_t)
+                    if revy:
+                        data_t = numpy.flipud(data_t)
                 else:
-                    for n in range(dataT.shape[0]):
-                        if revX: dataT[n] = numpy.fliplr(dataT[n])
-                        if revY: dataT[n] = numpy.flipud(dataT[n])
+                    for dim in range(data_t.shape[0]):
+                        if revx:
+                            data_t[dim] = numpy.fliplr(data_t[dim])
+                        if revy:
+                            data_t[dim] = numpy.flipud(data_t[dim])
 
-            rminT,rmaxT = self.zMin.value,self.zMax.value
-            rminV = rmaxV = None
+            rmin_t, rmax_t = self.zmin.value, self.zmax.value
+            rmin_v = rmax_v = None
             try:
-                rminV = float(rminT)
+                rmin_v = float(rmin_t)
             except ValueError:
-                self.zMin.value = ''
-            if rminV is not None:
+                self.zmin.value = ''
+            if rmin_v is not None:
                 try:
-                    rmaxV = float(rmaxT)
+                    rmax_v = float(rmax_t)
                 except ValueError:
-                    self.zMax.value = ''
-                if rmaxV is not None:
-                    if rmaxV == rminV: rmaxV += 0.1
-                    if rmaxV < rminV: rminV,rmaxV = rmaxV,rminV
+                    self.zmax.value = ''
+                if rmax_v is not None:
+                    if rmax_v == rmin_v:
+                        rmax_v += 0.1
+                    if rmax_v < rmin_v:
+                        rmin_v, rmax_v = rmax_v, rmin_v
 
-            cFile = self.colMapPath + '/jet.txt'
-            if not os.path.exists(cFile):
-                cFile = None
+            cfile = self.col_map_path + '/jet.txt'
+            if not os.path.exists(cfile):
+                cfile = None
                 print('App warning: colourmap file could not be found: reverting to default palette.')
 
-            if len(self.plotDims) == 2: # Colourmap
+            if len(self.plot_dims) == 2:  # Colourmap
 
-                disp = ColourMap(xT,yT,numpy.array([0]),dataT,
-                                 xlab = xName,ylab = yName,Dlab = self.varName,cfile = cFile,
-                                 height = self.mainPlotSize[0],width = self.mainPlotSize[1],
-                                 rMin = rminV,rMax = rmaxV,hover = self.hoverdisp2D)
+                disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
+                                 xlab=xname, ylab=yname, Dlab=self.var_name,
+                                 cfile=cfile, height=self.main_plot_size[0],
+                                 width=self.main_plot_size[1], rmin=rmin_v,
+                                 rmax=rmax_v, hover=self.hoverdisp2d)
 
-            else: # Colourmap with slider
+            else:  # Colourmap with slider
 
-                disp = ColourMapLPSlider(xT,yT,self.data[zName],dataT,
-                                         xlab = xName,ylab = yName,zlab = zName,Dlab = self.varName,cfile = cFile,
-                                         cmheight = self.mainPlotSize[0],cmwidth = self.mainPlotSize[1],
-                                         lpheight = self.linePlotSize[0],lpwidth = self.linePlotSize[1],
-                                         revz = revZ,rMin = rminV,rMax = rmaxV,hoverdisp = self.hoverdisp3D)
+                disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
+                                         xlab=xname, ylab=yname, zlab=zname,
+                                         Dlab=self.var_name, cfile=cfile,
+                                         cmheight=self.main_plot_size[0],
+                                         cmwidth=self.main_plot_size[1],
+                                         lpheight=self.line_plot_size[0],
+                                         lpwidth=self.line_plot_size[1],
+                                         revz=revz, rmin=rmin_v, rmax=rmax_v,
+                                         hoverdisp=self.hoverdisp3d)
 
-        self.Tabs.tabs[1].child.children[0] = disp
-        self.Tabs.active = 1
+        self.tabs.tabs[1].child.children[0] = disp
+        self.tabs.active = 1
 
-        self.statBox.text = '<font color="green">Finished.</font>'
+        self.stat_box.text = '<font color="green">Finished.</font>'
 
-    def Save(self):
+    def save(self):
 
-        self.statBox.text = '<font color="blue">Saving netCDF file...</font>'
-        msg = SaveNetCDF(self.data,self.dimNames,self.outputFilePath)
-        self.statBox.text = msg
+        '''Save the data to a newCDF file'''
 
-curdoc().add_root(App().GUI)
+        self.stat_box.text = '<font color="blue">Saving netCDF file...</font>'
+        msg = SaveNetCDF(self.data, self.dim_names, self.output_file_path)
+        self.stat_box.text = msg
+
+curdoc().add_root(App().gui)
 curdoc().title = 'bokodapviewer'
