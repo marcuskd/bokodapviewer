@@ -6,8 +6,6 @@ import xml.etree.ElementTree as et
 
 import numpy
 
-from bokodapviewer import SaveNetCDF
-
 from sodapclient import Handler
 
 from bokcolmaps import ColourMap
@@ -48,10 +46,6 @@ class App():
     When viewing the data the z axis limits can be fixed and all three axes
     can be reversed using the controls below the plot. The 'Update Display'
     button must be pressed to update the plot with the new settings.
-
-    The data can be saved to a NetCDF file using the 'Save to netCDF' button.
-    If no file path is specified the default one in the config file is used.
-    A time-stamped file name is assigned.
 
     Attributes such as scale factors, offsets, missing and fill values are
     automatically applied. The corresponding names are stored in the config
@@ -97,9 +91,6 @@ class App():
                 proxy_file_name = child.text
             if proxy_file_name == 'None':
                 proxy_file_name = None
-
-            if child.tag == 'OutputFilePath':
-                self.output_file_path = child.text
 
             if child.tag == 'ColourMapPath':
                 self.col_map_path = child.text
@@ -218,9 +209,6 @@ class App():
         self.zmin = TextInput(title='z minimum:')
         self.zmax = TextInput(title='z maximum:')
 
-        self.save_btn = Button(label='Save to NetCDF', disabled=True)
-        self.save_btn.on_click(self.save)
-
         self.stat_box = Div(text='<font color="green">Initialised OK</font>',
                             width=800)
 
@@ -239,16 +227,13 @@ class App():
         wp2 = Row(children=[self.revx_chkbox, self.revy_chkbox,
                             self.revz_chkbox])
         wp3 = Row(children=[self.update_btn])
-        wp4 = Row(self.save_btn)
 
         select_panel = Panel(title='Data Selection',
                              child=Column(ws1, ws2, ws3, ws4))
 
         plot_panel = Panel(title='Data Visualisation',
                            child=Column(Figure(toolbar_location=None),
-                                        wp1, wp2, wp3,
-                                        WidgetBox(Div(text='<hr>',
-                                                      width=1320)), wp4))
+                                        wp1, wp2, wp3))
 
         self.tabs = Tabs(tabs=[select_panel, plot_panel])
 
@@ -651,14 +636,6 @@ class App():
         self.tabs.active = 1
 
         self.stat_box.text = '<font color="green">Finished.</font>'
-
-    def save(self):
-
-        '''Save the data to a newCDF file'''
-
-        self.stat_box.text = '<font color="blue">Saving netCDF file...</font>'
-        msg = SaveNetCDF(self.data, self.dim_names, self.output_file_path)
-        self.stat_box.text = msg
 
 curdoc().add_root(App().gui)
 curdoc().title = 'bokodapviewer'

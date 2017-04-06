@@ -21,10 +21,6 @@ When viewing the data the z axis limits can be fixed and all three axes
 can be reversed using the controls below the plot. The 'Update Display'
 button must be pressed to update the plot with the new settings.
 
-The data can be saved to a NetCDF file using the 'Save to netCDF' button.
-If no file path is specified the default one in the config file is used.
-A time-stamped file name is assigned.
-
 Attributes such as scale factors, offsets, missing and fill values are
 automatically applied. The corresponding names are stored in the config
 file. More than one can be stored, e.g. simply add a config line
