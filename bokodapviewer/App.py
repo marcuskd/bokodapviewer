@@ -462,8 +462,6 @@ class App():
 
         self.stat_box.text = '<font color="green">Data downloaded.</font>'
 
-        self.save_btn.disabled = False
-
         self.display_data()
 
     def apply_attributes(self, var_name):
