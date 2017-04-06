@@ -20,7 +20,6 @@ setup(name = 'bokodapviewer',
                   ],
       packages = find_packages(),
       install_requires = ['bokeh >= 0.12.4',
-                          'netCDF4 >= 1.2',
                           'sodapclient >= 0.1.0',
                           'bokcolmaps >= 0.1.0',
                           'numpy >= 1.12'
