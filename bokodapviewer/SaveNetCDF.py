@@ -1,10 +1,11 @@
 '''SaveNetCDF function definition'''
 
-from netCDF4 import Dataset
 from datetime import datetime
 
 
 def SaveNetCDF(data, dim_names, output_file_path):
+
+    from netCDF4 import Dataset
 
     '''
     Function to save variables to a NetCDF4 file.
