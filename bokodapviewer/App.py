@@ -325,64 +325,25 @@ class App():
         selected data dimensions.
         '''
 
-        sel = self.ds_dds.selected['1d']['indices'][0]
-
-        opts = []
-        opt_dims = []
         num_dims = len(self.ds_select.data['Dimension'])
         if num_dims == 1:
-            if self.ds_dds.data['Dimensions'][sel][0] > 1:
-                opts.append(self.var_name + ' against index (line plot)')
-                opt_dims.append([0])
-                nav = 1
-            else:
-                opts.append('None (single value)')
-                nav = 0
+            nav, opts, opt_dims = self.get_opts_1d()
         else:
-            av_dims = [False]*num_dims
-            nav = 0
-            for dim in range(num_dims):
-                rmin = self.ds_select.data['First Index'][dim]
-                rint = self.ds_select.data['Interval'][dim]
-                rmax = self.ds_select.data['Last Index'][dim] + 1
-                if rmax > rmin:
-                    tli = list(range(rmin, rmax, rint))
-                    if len(tli) > 1:
-                        av_dims[dim] = True
-                        nav += 1
-            if nav > 0:
-                if nav == 1:
-                    attr = av_dims.index(True)
-                    opts.append(self.var_name + ' against ' +
-                                self.ds_select.data['Dimension'][attr] +
-                                ' (line plot)')
-                    opt_dims = [attr]
-                elif nav == 2:
-                    for attr in range(num_dims):
-                        if av_dims[attr]:
-                            for dim in range(num_dims):
-                                if av_dims[dim] and (dim != attr):
-                                    opts.append(self.var_name + ' against ' +
-                                                self.ds_select.data['Dimension'][attr] + ' and ' +
-                                                self.ds_select.data['Dimension'][dim] + ' (colour map)')
-                                    opt_dims.append([dim, attr])
-                elif nav == 3:
-                    for attr in range(num_dims):
-                        if av_dims[attr]:  # attr will be slider dimension
-                            for dim in range(num_dims):
-                                if av_dims[dim] and (dim != attr):
-                                    for dim2 in range(num_dims):
-                                        if av_dims[dim2] and (dim2 != dim) and (dim2 != attr):
-                                            opt_dims.append([attr, dim2, dim])
-                                            opts.append(self.var_name + ' against ' +
-                                                        self.ds_select.data['Dimension'][dim] + ' and ' +
-                                                        self.ds_select.data['Dimension'][dim2] + ' with ' +
-                                                        self.ds_select.data['Dimension'][attr] + ' as variable ' +
-                                                        '(colour map with slider)')
-                else:
-                    opts.append('None (maximum 3 dimensions - please reduce others to singletons)')
+            nav, av_dims = self.get_av_dims()
+            if nav == 0:
+                opts = [('None (single value)')]
+            elif nav == 1:
+                attr = av_dims.index(True)
+                opts = [(self.var_name + ' against ' +
+                        self.ds_select.data['Dimension'][attr] +
+                        ' (line plot)')]
+                opt_dims = [attr]
+            elif nav == 2:
+                opts, opt_dims = self.get_opts_2d(num_dims, nav, av_dims)
+            elif nav == 3:
+                opts, opt_dims = self.get_opts_3d(num_dims, nav, av_dims)
             else:
-                opts.append('None (single value)')
+                opts = [('None (maximum 3 dimensions - please reduce others to singletons)')]
 
         self.plot_ops.options = opts
         self.plot_ops.value = opts[0]
@@ -392,6 +353,81 @@ class App():
             self.get_data_btn.disabled = False
 
         self.stat_box.text = '<font color="green">Plot options found.</font>'
+
+    def get_opts_1d(self):
+
+        '''Get 1d plot options'''
+
+        sel = self.ds_dds.selected['1d']['indices'][0]
+
+        opts = []
+        opt_dims = []
+
+        if self.ds_dds.data['Dimensions'][sel][0] > 1:
+            opts.append(self.var_name + ' against index (line plot)')
+            opt_dims.append([0])
+            nav = 1
+        else:
+            opts.append('None (single value)')
+            nav = 0
+
+        return nav, opts, opt_dims
+
+    def get_opts_2d(self, num_dims, nav, av_dims):
+
+        opts = []
+        opt_dims = []
+
+        for attr in range(num_dims):
+            if av_dims[attr]:
+                for dim in range(num_dims):
+                    if av_dims[dim] and (dim != attr):
+                        opts.append(self.var_name + ' against ' +
+                                    self.ds_select.data['Dimension'][attr] + ' and ' +
+                                    self.ds_select.data['Dimension'][dim] + ' (colour map)')
+                        opt_dims.append([dim, attr])
+
+        return opts, opt_dims
+
+    def get_opts_3d(self, num_dims, nav, av_dims):
+
+        opts = []
+        opt_dims = []
+
+        for attr in range(num_dims):
+            if av_dims[attr]:
+                for dim in range(num_dims):
+                    if av_dims[dim] and (dim != attr):
+                        for dim2 in range(num_dims):
+                            if av_dims[dim2] and (dim2 != dim) and (dim2 != attr):
+                                opt_dims.append([attr, dim2, dim])
+                                opts.append(self.var_name + ' against ' +
+                                            self.ds_select.data['Dimension'][dim] + ' and ' +
+                                            self.ds_select.data['Dimension'][dim2] + ' with ' +
+                                            self.ds_select.data['Dimension'][attr] + ' as variable ' +
+                                            '(colour map with slider)')
+
+        return opts, opt_dims
+
+    def get_av_dims(self):
+
+        ''' Get available (non-singleton) dimensions'''
+
+        num_dims = len(self.ds_select.data['Dimension'])
+
+        av_dims = [False]*num_dims
+        nav = 0
+        for dim in range(num_dims):
+            rmin = self.ds_select.data['First Index'][dim]
+            rint = self.ds_select.data['Interval'][dim]
+            rmax = self.ds_select.data['Last Index'][dim] + 1
+            if rmax > rmin:
+                tli = list(range(rmin, rmax, rint))
+                if len(tli) > 1:
+                    av_dims[dim] = True
+                    nav += 1
+
+        return nav, av_dims
 
     def get_data(self):
 
@@ -456,6 +492,9 @@ class App():
         ind = self.plot_ops.options.index(self.plot_ops.value)
         self.plot_dims = self.opt_dims[ind]
 
+        if type(self.plot_dims) is int:
+            self.plot_dims = [self.plot_dims]
+
         self.stat_box.text = '<font color="green">Data downloaded.</font>'
 
         self.display_data()
@@ -501,7 +540,7 @@ class App():
         if len(self.plot_dims) == 2:
             xname = self.ds_select.data['Dimension'][self.plot_dims[1]]
             yname = self.ds_select.data['Dimension'][self.plot_dims[0]]
-        else:
+        elif len(self.plot_dims) == 3:
             xname = self.ds_select.data['Dimension'][self.plot_dims[2]]
             yname = self.ds_select.data['Dimension'][self.plot_dims[1]]
             zname = self.ds_select.data['Dimension'][self.plot_dims[0]]
@@ -514,7 +553,8 @@ class App():
         if len(self.revz_chkbox.active) > 0:
             revz = True
 
-        x_t, y_t, data_t = self.get_trans_data(xname, yname, revx, revy)
+        if len(self.plot_dims) > 1:
+            x_t, y_t, data_t = self.get_trans_data(xname, yname, revx, revy)
 
         rmin_v, rmax_v = self.get_cmap_lims()
 
@@ -599,31 +639,34 @@ class App():
                       plot_width=self.line_plot_size[0],
                       tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
 
-        disp.line(x=numpy.linspace(0, self.data[self.var_name].size-1,
-                                   self.data[self.var_name].size),
-                  y=self.data[self.var_name],
-                  line_color='blue', line_width=2, line_alpha=1)
+        ydata = self.data[self.var_name]
+        ydata = numpy.squeeze(ydata)
+
+        disp.line(x=numpy.linspace(0, ydata.size-1, ydata.size),
+                  y=ydata, line_color='blue', line_width=2, line_alpha=1)
 
         disp.toolbar_location = 'above'
 
-        disp.title_text_font = disp.xaxis.axis_label_text_font = \
+        disp.title.text_font = disp.xaxis.axis_label_text_font = \
             disp.yaxis.axis_label_text_font = 'garamond'
         disp.xaxis.axis_label_text_font_size = \
             disp.yaxis.axis_label_text_font_size = '10pt'
-        disp.title_text_font_style = \
+        disp.title.text_font_style = \
             disp.xaxis.axis_label_text_font_style = \
             disp.yaxis.axis_label_text_font_style = 'bold'
-        disp.title_text_font_size = '8pt'
+        disp.title.text_font_size = '8pt'
         disp.x_range.start = 0
-        disp.x_range.end = self.data[self.var_name].size - 1
-        disp.y_range.start = self.data[self.var_name][0]
-        disp.y_range.end = self.data[self.var_name][-1]
+        disp.x_range.end = ydata.size - 1
+        disp.y_range.start = ydata[0]
+        disp.y_range.end = ydata[-1]
         if revx:
             disp.x_range.start, disp.x_range.end = \
                 disp.x_range.end, disp.x_range.start
         if revy:
             disp.y_range.start, disp.y_range.end = \
                 disp.y_range.end, disp.y_range.start
+
+        return disp
 
     def get_cmap_lims(self):
 
