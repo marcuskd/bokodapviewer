@@ -109,17 +109,13 @@ class App():
                (child.text not in self.attr_names[child.tag]):
                 self.attr_names[child.tag].append(child.text)
 
+            hoverdispmap = dict({'Off': False, 'On': True})
+
             if child.tag == 'CursorReadout2D':
-                if child.text == 'Off':
-                    self.hoverdisp2d = False
-                else:
-                    self.hoverdisp2d = True
+                self.hoverdisp2d = hoverdispmap[child.text]
 
             if child.tag == 'CursorReadout3D':
-                if child.text == 'Off':
-                    self.hoverdisp3d = False
-                else:
-                    self.hoverdisp3d = True
+                self.hoverdisp3d = hoverdispmap[child.text]
 
     def setup_gui(self):
 
