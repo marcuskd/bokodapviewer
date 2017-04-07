@@ -502,6 +502,14 @@ class App():
 
         self.stat_box.text = '<font color="blue">Displaying data...</font>'
 
+        if len(self.plot_dims) == 2:
+            xname = self.ds_select.data['Dimension'][self.plot_dims[1]]
+            yname = self.ds_select.data['Dimension'][self.plot_dims[0]]
+        else:
+            xname = self.ds_select.data['Dimension'][self.plot_dims[2]]
+            yname = self.ds_select.data['Dimension'][self.plot_dims[1]]
+            zname = self.ds_select.data['Dimension'][self.plot_dims[0]]
+
         revx = revy = revz = False
         if len(self.revx_chkbox.active) > 0:
             revx = True
@@ -510,100 +518,81 @@ class App():
         if len(self.revz_chkbox.active) > 0:
             revz = True
 
-        # Find plot type
+        x_t, y_t, data_t = self.get_trans_data(xname, yname, revx, revy)
 
-        if len(self.plot_dims) == 1:  # Line plot
+        rmin_v, rmax_v = self.get_cmap_lims()
 
-            self.display_line_plot(revx, revy)
+        cfile = self.col_map_path + '/jet.txt'
+        if not os.path.exists(cfile):
+            cfile = None
+            print('App warning: colourmap file could not be found: reverting to default palette.')
 
-        else:  # Colourmaps
+        if len(self.plot_dims) == 1:
 
-            if len(self.plot_dims) == 2:
-                xname = self.ds_select.data['Dimension'][self.plot_dims[1]]
-                yname = self.ds_select.data['Dimension'][self.plot_dims[0]]
-            else:
-                xname = self.ds_select.data['Dimension'][self.plot_dims[2]]
-                yname = self.ds_select.data['Dimension'][self.plot_dims[1]]
-                zname = self.ds_select.data['Dimension'][self.plot_dims[0]]
+            disp = self.display_line_plot(revx, revy)
 
-            all_dims = self.data[self.var_name].shape
-            t_dims = [0]*len(all_dims)
-            pd_count = 0
-            for dim in range(len(t_dims)):
-                if all_dims[dim] == 1:
-                    t_dims[dim] = dim
-                else:
-                    t_dims[dim] = self.plot_dims[pd_count]
-                    pd_count += 1
+        elif len(self.plot_dims) == 2:
 
-            data_t = self.data[self.var_name].copy().transpose(t_dims)
-            data_t = numpy.squeeze(data_t)
+            disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
+                             xlab=xname, ylab=yname, Dlab=self.var_name,
+                             cfile=cfile, height=self.main_plot_size[0],
+                             width=self.main_plot_size[1], rmin=rmin_v,
+                             rmax=rmax_v, hover=self.hoverdisp2d)
 
-            x_t = self.data[xname].copy()
-            y_t = self.data[yname].copy()
-            if revx:
-                x_t = numpy.flipud(x_t)
-            if revy:
-                y_t = numpy.flipud(y_t)
+        elif len(self.plot_dims) == 3:
 
-            if len(self.plot_dims) == 2:
-                if revx:
-                    data_t = numpy.fliplr(data_t)
-                if revy:
-                    data_t = numpy.flipud(data_t)
-            else:
-                for dim in range(data_t.shape[0]):
-                    if revx:
-                        data_t[dim] = numpy.fliplr(data_t[dim])
-                    if revy:
-                        data_t[dim] = numpy.flipud(data_t[dim])
-
-            rmin_t, rmax_t = self.zmin.value, self.zmax.value
-            rmin_v = rmax_v = None
-            try:
-                rmin_v = float(rmin_t)
-            except ValueError:
-                self.zmin.value = ''
-            if rmin_v is not None:
-                try:
-                    rmax_v = float(rmax_t)
-                except ValueError:
-                    self.zmax.value = ''
-                if rmax_v is not None:
-                    if rmax_v == rmin_v:
-                        rmax_v += 0.1
-                    if rmax_v < rmin_v:
-                        rmin_v, rmax_v = rmax_v, rmin_v
-
-            cfile = self.col_map_path + '/jet.txt'
-            if not os.path.exists(cfile):
-                cfile = None
-                print('App warning: colourmap file could not be found: reverting to default palette.')
-
-            if len(self.plot_dims) == 2:  # Colourmap
-
-                disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
-                                 xlab=xname, ylab=yname, Dlab=self.var_name,
-                                 cfile=cfile, height=self.main_plot_size[0],
-                                 width=self.main_plot_size[1], rmin=rmin_v,
-                                 rmax=rmax_v, hover=self.hoverdisp2d)
-
-            else:  # Colourmap with slider
-
-                disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
-                                         xlab=xname, ylab=yname, zlab=zname,
-                                         Dlab=self.var_name, cfile=cfile,
-                                         cmheight=self.main_plot_size[0],
-                                         cmwidth=self.main_plot_size[1],
-                                         lpheight=self.line_plot_size[0],
-                                         lpwidth=self.line_plot_size[1],
-                                         revz=revz, rmin=rmin_v, rmax=rmax_v,
-                                         hoverdisp=self.hoverdisp3d)
+            disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
+                                     xlab=xname, ylab=yname, zlab=zname,
+                                     Dlab=self.var_name, cfile=cfile,
+                                     cmheight=self.main_plot_size[0],
+                                     cmwidth=self.main_plot_size[1],
+                                     lpheight=self.line_plot_size[0],
+                                     lpwidth=self.line_plot_size[1],
+                                     revz=revz, rmin=rmin_v, rmax=rmax_v,
+                                     hoverdisp=self.hoverdisp3d)
 
         self.tabs.tabs[1].child.children[0] = disp
         self.tabs.active = 1
 
         self.stat_box.text = '<font color="green">Finished.</font>'
+
+    def get_trans_data(self, xname, yname, revx, revy):
+
+        '''Get the transposed data and axes'''
+
+        all_dims = self.data[self.var_name].shape
+        t_dims = [0]*len(all_dims)
+        pd_count = 0
+        for dim in range(len(t_dims)):
+            if all_dims[dim] == 1:
+                t_dims[dim] = dim
+            else:
+                t_dims[dim] = self.plot_dims[pd_count]
+                pd_count += 1
+
+        data_t = self.data[self.var_name].copy().transpose(t_dims)
+        data_t = numpy.squeeze(data_t)
+
+        x_t = self.data[xname].copy()
+        y_t = self.data[yname].copy()
+        if revx:
+            x_t = numpy.flipud(x_t)
+        if revy:
+            y_t = numpy.flipud(y_t)
+
+        if len(self.plot_dims) == 2:
+            if revx:
+                data_t = numpy.fliplr(data_t)
+            if revy:
+                data_t = numpy.flipud(data_t)
+        else:
+            for dim in range(data_t.shape[0]):
+                if revx:
+                    data_t[dim] = numpy.fliplr(data_t[dim])
+                if revy:
+                    data_t[dim] = numpy.flipud(data_t[dim])
+
+        return x_t, y_t, data_t
 
     def display_line_plot(self, revx, revy):
 
@@ -639,6 +628,31 @@ class App():
         if revy:
             disp.y_range.start, disp.y_range.end = \
                 disp.y_range.end, disp.y_range.start
+
+    def get_cmap_lims(self):
+
+        '''Get the limits for the colourmap'''
+
+        rmin_t, rmax_t = self.zmin.value, self.zmax.value
+        rmin_v = rmax_v = None
+
+        try:
+            rmin_v = float(rmin_t)
+        except ValueError:
+            self.zmin.value = ''
+        if rmin_v is not None:
+            try:
+                rmax_v = float(rmax_t)
+            except ValueError:
+                self.zmax.value = ''
+            if rmax_v is not None:
+                if rmax_v == rmin_v:
+                    rmax_v += 0.1
+                if rmax_v < rmin_v:
+                    rmin_v, rmax_v = rmax_v, rmin_v
+
+        return rmin_v, rmax_v
+
 
 curdoc().add_root(App().gui)
 curdoc().title = 'bokodapviewer'
