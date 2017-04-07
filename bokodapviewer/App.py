@@ -546,18 +546,17 @@ class App():
             if revy:
                 y_t = numpy.flipud(y_t)
 
-            if revx or revy:
-                if len(self.plot_dims) == 2:
+            if len(self.plot_dims) == 2:
+                if revx:
+                    data_t = numpy.fliplr(data_t)
+                if revy:
+                    data_t = numpy.flipud(data_t)
+            else:
+                for dim in range(data_t.shape[0]):
                     if revx:
-                        data_t = numpy.fliplr(data_t)
+                        data_t[dim] = numpy.fliplr(data_t[dim])
                     if revy:
-                        data_t = numpy.flipud(data_t)
-                else:
-                    for dim in range(data_t.shape[0]):
-                        if revx:
-                            data_t[dim] = numpy.fliplr(data_t[dim])
-                        if revy:
-                            data_t[dim] = numpy.flipud(data_t[dim])
+                        data_t[dim] = numpy.flipud(data_t[dim])
 
             rmin_t, rmax_t = self.zmin.value, self.zmax.value
             rmin_v = rmax_v = None
