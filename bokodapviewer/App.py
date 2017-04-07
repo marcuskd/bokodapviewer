@@ -105,9 +105,9 @@ class App():
                 self.line_plot_size = [int(child.attrib['height']),
                                        int(child.attrib['width'])]
 
-            if child.tag in self.attr_names.keys():
-                if child.text not in self.attr_names[child.tag]:
-                    self.attr_names[child.tag].append(child.text)
+            if (child.tag in self.attr_names.keys()) and \
+               (child.text not in self.attr_names[child.tag]):
+                self.attr_names[child.tag].append(child.text)
 
             if child.tag == 'CursorReadout2D':
                 if child.text == 'Off':
@@ -514,36 +514,7 @@ class App():
 
         if len(self.plot_dims) == 1:  # Line plot
 
-            disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
-                          plot_height=self.line_plot_size[0],
-                          plot_width=self.line_plot_size[0],
-                          tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
-
-            disp.line(x=numpy.linspace(0, self.data[self.var_name].size-1,
-                                       self.data[self.var_name].size),
-                      y=self.data[self.var_name],
-                      line_color='blue', line_width=2, line_alpha=1)
-
-            disp.toolbar_location = 'above'
-
-            disp.title_text_font = disp.xaxis.axis_label_text_font = \
-                disp.yaxis.axis_label_text_font = 'garamond'
-            disp.xaxis.axis_label_text_font_size = \
-                disp.yaxis.axis_label_text_font_size = '10pt'
-            disp.title_text_font_style = \
-                disp.xaxis.axis_label_text_font_style = \
-                disp.yaxis.axis_label_text_font_style = 'bold'
-            disp.title_text_font_size = '8pt'
-            disp.x_range.start = 0
-            disp.x_range.end = self.data[self.var_name].size - 1
-            disp.y_range.start = self.data[self.var_name][0]
-            disp.y_range.end = self.data[self.var_name][-1]
-            if revx:
-                disp.x_range.start, disp.x_range.end = \
-                    disp.x_range.end, disp.x_range.start
-            if revy:
-                disp.y_range.start, disp.y_range.end = \
-                    disp.y_range.end, disp.y_range.start
+            self.display_line_plot(revx, revy)
 
         else:  # Colourmaps
 
@@ -634,6 +605,41 @@ class App():
         self.tabs.active = 1
 
         self.stat_box.text = '<font color="green">Finished.</font>'
+
+    def display_line_plot(self, revx, revy):
+
+        '''Display a line plot'''
+
+        disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
+                      plot_height=self.line_plot_size[0],
+                      plot_width=self.line_plot_size[0],
+                      tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
+
+        disp.line(x=numpy.linspace(0, self.data[self.var_name].size-1,
+                                   self.data[self.var_name].size),
+                  y=self.data[self.var_name],
+                  line_color='blue', line_width=2, line_alpha=1)
+
+        disp.toolbar_location = 'above'
+
+        disp.title_text_font = disp.xaxis.axis_label_text_font = \
+            disp.yaxis.axis_label_text_font = 'garamond'
+        disp.xaxis.axis_label_text_font_size = \
+            disp.yaxis.axis_label_text_font_size = '10pt'
+        disp.title_text_font_style = \
+            disp.xaxis.axis_label_text_font_style = \
+            disp.yaxis.axis_label_text_font_style = 'bold'
+        disp.title_text_font_size = '8pt'
+        disp.x_range.start = 0
+        disp.x_range.end = self.data[self.var_name].size - 1
+        disp.y_range.start = self.data[self.var_name][0]
+        disp.y_range.end = self.data[self.var_name][-1]
+        if revx:
+            disp.x_range.start, disp.x_range.end = \
+                disp.x_range.end, disp.x_range.start
+        if revy:
+            disp.y_range.start, disp.y_range.end = \
+                disp.y_range.end, disp.y_range.start
 
 curdoc().add_root(App().gui)
 curdoc().title = 'bokodapviewer'
