@@ -19,10 +19,10 @@ setup(name = 'bokodapviewer',
                   'Science'
                   ],
       packages = find_packages(),
-      install_requires = ['bokeh >= 0.12.4',
+      install_requires = ['numpy >= 1.12',
+                          'bokeh >= 0.12.5',
                           'sodapclient >= 0.1.0',
-                          'bokcolmaps >= 0.1.0',
-                          'numpy >= 1.12'
+                          'bokcolmaps >= 0.1.0'
                           ],
       package_data = {'bokodapviewer':['Config.xml'],
                       },

@@ -34,14 +34,18 @@ class App():
     Display data with the following steps:
     1. Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be
     loaded and displayed.
-    2. Select a variable (select a row in the DDS table) and press the
+    2. Select a variable (i.e. select a row in the DDS table) and press the
     'Get variable details' button. The DAS and available dimensions will be
     displayed.
-    3. Edit the data dimensions as required and press the 'Get plot options'
+    3. Edit the data dimensions (if required) and press the 'Get plot options'
     button.
     4. Select the required plot option in the drop down and press the
     'Get data' button. The data will be loaded and displayed under the
     Data Visualisation tab.
+
+    NB: In order to avoid errors, all steps must be followed in order, i.e.:
+    - After opening a new URL, repeat all of steps 2-4 in order.
+    - After the selected variable is changed, repeat step 3 then step 4.
 
     When viewing the data the z axis limits can be fixed and all three axes
     can be reversed using the controls below the plot. The 'Update Display'
