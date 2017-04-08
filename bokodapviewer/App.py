@@ -47,6 +47,12 @@ class App():
     - After opening a new URL, repeat all of steps 2-4 in order.
     - After the selected variable is changed, repeat step 3 then step 4.
 
+    All possible plot options corresponding to the selected data dimensions
+    will be available, however for a 2D image plot the image must be on a
+    uniform grid to be rendered correctly and for the data cursor to provide
+    correct readout. For a 2D plot with a slider (i.e. 3D volume slices),
+    the slider axis can be non-uniform.
+
     When viewing the data the z axis limits can be fixed and all three axes
     can be reversed using the controls below the plot. The 'Update Display'
     button must be pressed to update the plot with the new settings.
