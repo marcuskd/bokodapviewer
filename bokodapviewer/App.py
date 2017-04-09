@@ -39,19 +39,25 @@ class App():
     displayed.
     3. Edit the data dimensions (if required) and press the 'Get plot options'
     button.
-    4. Select the required plot option in the drop down and press the
-    'Get data' button. The data will be loaded and displayed under the
-    Data Visualisation tab.
+    4. Select the required plot option in the drop down and enter an
+    interpolation interval if required (see below).
+    5. Press the 'Get data' button. The data will be loaded and displayed under
+    the Data Visualisation tab.
 
     NB: In order to avoid errors, all steps must be followed in order, i.e.:
-    - After opening a new URL, repeat all of steps 2-4 in order.
-    - After the selected variable is changed, repeat step 3 then step 4.
+    - After opening a new URL, repeat all of steps 2-5 in order.
+    - After the selected variable is changed, repeat all of steps 3-5 in order.
+    - After selecting new dimensions, press the 'Get plot options' button
+      and repeat step 4 then step 5.
 
-    All possible plot options corresponding to the selected data dimensions
-    will be available, however for a 2D image plot the image must be on a
-    uniform grid to be rendered correctly and for the data cursor to provide
-    correct readout. For a 2D plot with a slider (i.e. 3D volume slices),
-    the slider axis can be non-uniform.
+    For 2D images both axes must be on a uniform grid so interpolation will be
+    done if one of them is not. If a value is entered into the
+    Interpolation Interval box it will be used; otherwise the minimum interval
+    in the relevant axis grid will be used (this may be slow). For a 2D plot
+    with a slider (i.e. 3D volume slices), the slider axis can be non-uniform;
+    only the axes for the image itself must be uniform. A non-uniformity
+    tolerance percentage can be set: this allows for slight non-uniformity
+    in an axis grid (e.g. precision errors) without invoking interpolation.
 
     When viewing the data the z axis limits can be fixed and all three axes
     can be reversed using the controls below the plot. The 'Update Display'
@@ -208,6 +214,10 @@ class App():
 
         self.endian_chkbox = CheckboxGroup(labels=['Big Endian'], active=[0])
 
+        self.interp_int_box = TextInput(title='Interpolation interval:')
+        self.interp_tol_box = TextInput(title='Non-uniform tolerance (%):',
+                                        value='0')
+
         self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[])
         self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[])
         self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[])
@@ -228,7 +238,8 @@ class App():
                             Column(Div(text='<font color="blue">Dimensions'), select_table)])
         ws3 = Row(children=[self.get_pltops_btn, self.get_data_btn,
                             self.endian_chkbox])
-        ws4 = Row(children=[self.plot_ops])
+        ws4 = Row(children=[Column(self.plot_ops, Row(self.interp_int_box,
+                                                      self.interp_tol_box))])
         wp1 = Row(children=[self.zmin, self.zmax])
         wp2 = Row(children=[self.revx_chkbox, self.revy_chkbox,
                             self.revz_chkbox])
@@ -541,6 +552,152 @@ class App():
         if not numpy.isnan(offset):
             data += offset
 
+    def interp_data(self, x_t, y_t, data_t):
+
+        '''Uniform interpolation (if needed) for display'''
+
+        # Check if interpolation needed
+
+        try:  # Get non-uniformity tolerance if specified
+            nu_tol = float(self.interp_tol_box.value)
+        except ValueError:
+            nu_tol = 0
+
+        interp_x = interp_y = False
+        dx_t = numpy.abs(numpy.diff(x_t))
+        if 100*(dx_t.max() - dx_t.min())/dx_t.mean() > nu_tol:
+            interp_x = True
+        dy_t = numpy.abs(numpy.diff(y_t))
+        if 100*(dy_t.max() - dy_t.min())/dy_t.mean() > nu_tol:
+            interp_y = True
+
+        if not (interp_x or interp_y):  # Nothing to do
+            return x_t, y_t, data_t
+
+        if interp_x and interp_y:  # Can't do both
+            self.stat_box.text = '<font color="red">Error: more than one plot axis\
+            non-uniform, please choose a different plot option</font>'
+            return x_t, y_t, None
+
+        self.stat_box.text = '<font color="blue">Interpolating...</font>'
+
+        if len(data_t.shape) == 3:
+            is3d = True
+        else:
+            is3d = False
+
+        o_dims = data_t.shape
+
+        # Find the transpose order
+
+        if is3d:
+            if interp_x:
+                t_ord = [0, 1, 2]
+            elif interp_y:
+                t_ord = [0, 2, 1]
+        else:
+            if interp_x:
+                t_ord = [0, 1]
+            elif interp_y:
+                t_ord = [1, 0]
+
+        # Get the interpolant
+
+        if interp_x:
+            ax_v = x_t.copy()
+        else:
+            ax_v = y_t.copy()
+
+        ax_flipped = False
+        if ax_v[1] < ax_v[0]:
+            ax_flipped = True
+            ax_v = numpy.flipud(ax_v)  # Must be increasing for interpolation
+            data_t = self.flip_data(interp_x, is3d, o_dims, data_t)
+
+        try:  # Get interpolation interval if specified
+            ax_int = float(self.interp_int_box.value)
+            self.stat_box.text = '<font color="blue">Interpolating using \
+            specified interval...</font>'
+        except ValueError:
+            ax_int = numpy.min(numpy.diff(ax_v))
+            self.stat_box.text = '<font color="blue">No interval specified: interpolating \
+            using minimum available interval...</font>'
+
+        n_pts = int(numpy.round((ax_v[-1] - ax_v[0])/ax_int)) + 1
+        ax_v_i = numpy.linspace(ax_v[0], ax_v[-1], n_pts)
+        ax_int = ax_v_i[1] - ax_v_i[0]
+        self.interp_int_box.value = str(ax_int)
+
+        # Transpose and flatten for 1d interpolation
+
+        data_v = numpy.transpose(data_t, t_ord).flatten()
+
+        # Interpolate
+
+        nreps = int(data_t.size/ax_v.size)
+        olen = ax_v.size
+        ilen = ax_v_i.size
+        data_v_i = numpy.zeros(ilen*nreps)
+        for rep in range(nreps):
+            data_v_i[rep*ilen:(rep+1)*ilen] = numpy.interp(ax_v_i, ax_v,
+                                                           data_v[rep*olen:(rep+1)*olen])
+
+        # Reshape and re-transpose
+
+        if is3d:
+            if interp_x:
+                i_dims = [o_dims[0], o_dims[1], n_pts]
+            else:
+                i_dims = [o_dims[0], n_pts, o_dims[2]]
+        else:
+            if interp_x:
+                i_dims = [o_dims[0], n_pts]
+            else:
+                i_dims = [n_pts, o_dims[1]]
+
+        i_dims_t = [i_dims[t] for t in t_ord]
+
+        # Reshape to transposed array
+
+        data_t = numpy.reshape(data_v_i, i_dims_t)
+
+        # Transpose back
+
+        data_t = numpy.transpose(data_t, t_ord)
+
+        # Flip the data if needed
+
+        if ax_flipped:
+            ax_v_i = numpy.flipud(ax_v_i)
+            data_t = self.flip_data(interp_x, is3d, o_dims, data_t)
+
+        # Set the axis array and return
+
+        if interp_x:
+            x_t = ax_v_i
+        else:
+            y_t = ax_v_i
+
+        return x_t, y_t, data_t
+
+    @staticmethod
+    def flip_data(interp_x, is3d, o_dims, data_t):
+
+        if interp_x:
+            if is3d:
+                for axi in range(o_dims[0]):
+                    data_t[axi] = numpy.fliplr(data_t[axi])
+            else:
+                data_t = numpy.fliplr(data_t)
+        else:
+            if is3d:
+                for axi in range(o_dims[0]):
+                    data_t[axi] = numpy.flipud(data_t[axi])
+            else:
+                data_t = numpy.flipud(data_t)
+
+        return data_t
+
     def display_data(self):
 
         '''Display the data'''
@@ -579,28 +736,34 @@ class App():
 
         elif len(self.plot_dims) == 2:
 
-            disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
-                             xlab=xname, ylab=yname, Dlab=self.var_name,
-                             cfile=cfile, height=self.main_plot_size[0],
-                             width=self.main_plot_size[1], rmin=rmin_v,
-                             rmax=rmax_v, hover=self.hoverdisp2d)
+            x_t, y_t, data_t = self.interp_data(x_t, y_t, data_t)
+
+            if data_t is not None:
+                disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
+                                 xlab=xname, ylab=yname, dmlab=self.var_name,
+                                 cfile=cfile, height=self.main_plot_size[0],
+                                 width=self.main_plot_size[1], rmin=rmin_v,
+                                 rmax=rmax_v, hover=self.hoverdisp2d)
 
         elif len(self.plot_dims) == 3:
 
-            disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
-                                     xlab=xname, ylab=yname, zlab=zname,
-                                     Dlab=self.var_name, cfile=cfile,
-                                     cmheight=self.main_plot_size[0],
-                                     cmwidth=self.main_plot_size[1],
-                                     lpheight=self.line_plot_size[0],
-                                     lpwidth=self.line_plot_size[1],
-                                     revz=revz, rmin=rmin_v, rmax=rmax_v,
-                                     hoverdisp=self.hoverdisp3d)
+            x_t, y_t, data_t = self.interp_data(x_t, y_t, data_t)
 
-        self.tabs.tabs[1].child.children[0] = disp
-        self.tabs.active = 1
+            if data_t is not None:
+                disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
+                                         xlab=xname, ylab=yname, zlab=zname,
+                                         dmlab=self.var_name, cfile=cfile,
+                                         cmheight=self.main_plot_size[0],
+                                         cmwidth=self.main_plot_size[1],
+                                         lpheight=self.line_plot_size[0],
+                                         lpwidth=self.line_plot_size[1],
+                                         revz=revz, rmin=rmin_v, rmax=rmax_v,
+                                         hoverdisp=self.hoverdisp3d)
 
-        self.stat_box.text = '<font color="green">Finished.</font>'
+        if (len(self.plot_dims) == 1) or (data_t is not None):
+            self.tabs.tabs[1].child.children[0] = disp
+            self.tabs.active = 1
+            self.stat_box.text = '<font color="green">Finished.</font>'
 
     def get_trans_data(self, xname, yname, revx, revy):
 

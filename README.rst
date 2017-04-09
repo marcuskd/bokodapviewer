@@ -13,19 +13,25 @@ loaded and displayed.
 displayed.
 3. Edit the data dimensions (if required) and press the 'Get plot options'
 button.
-4. Select the required plot option in the drop down and press the
-'Get data' button. The data will be loaded and displayed under the
-Data Visualisation tab.
+4. Select the required plot option in the drop down and enter an
+interpolation interval if required (see below).
+5. Press the 'Get data' button. The data will be loaded and displayed under
+the Data Visualisation tab.
 
 NB: In order to avoid errors, all steps must be followed in order, i.e.:
-- After opening a new URL, repeat all of steps 2-4 in order.
-- After the selected variable is changed, repeat step 3 then step 4.
+- After opening a new URL, repeat all of steps 2-5 in order.
+- After the selected variable is changed, repeat all of steps 3-5 in order.
+- After selecting new dimensions, press the 'Get plot options' button
+  and repeat step 4 then step 5.
 
-All possible plot options corresponding to the selected data dimensions
-will be available, however for a 2D image plot the image must be on a
-uniform grid to be rendered correctly and for the data cursor to provide
-correct readout. For a 2D plot with a slider (i.e. 3D volume slices),
-the slider axis can be non-uniform.
+For 2D images both axes must be on a uniform grid so interpolation will be
+done if one of them is not. If a value is entered into the
+Interpolation Interval box it will be used; otherwise the minimum interval
+in the relevant axis grid will be used (this may be slow). For a 2D plot
+with a slider (i.e. 3D volume slices), the slider axis can be non-uniform;
+only the axes for the image itself must be uniform. A non-uniformity
+tolerance percentage can be set: this allows for slight non-uniformity
+in an axis grid (e.g. precision errors) without invoking interpolation.
 
 When viewing the data the z axis limits can be fixed and all three axes
 can be reversed using the controls below the plot. The 'Update Display'
