@@ -24,6 +24,8 @@ from bokeh.io import curdoc
 
 from numpy import float32
 
+from bokodapviewer.interp_data import interp_data
+
 
 class App():
 
@@ -552,152 +554,6 @@ class App():
         if not numpy.isnan(offset):
             data += offset
 
-    def interp_data(self, x_t, y_t, data_t):
-
-        '''Uniform interpolation (if needed) for display'''
-
-        # Check if interpolation needed
-
-        try:  # Get non-uniformity tolerance if specified
-            nu_tol = float(self.interp_tol_box.value)
-        except ValueError:
-            nu_tol = 0
-
-        interp_x = interp_y = False
-        dx_t = numpy.abs(numpy.diff(x_t))
-        if 100*(dx_t.max() - dx_t.min())/dx_t.mean() > nu_tol:
-            interp_x = True
-        dy_t = numpy.abs(numpy.diff(y_t))
-        if 100*(dy_t.max() - dy_t.min())/dy_t.mean() > nu_tol:
-            interp_y = True
-
-        if not (interp_x or interp_y):  # Nothing to do
-            return x_t, y_t, data_t
-
-        if interp_x and interp_y:  # Can't do both
-            self.stat_box.text = '<font color="red">Error: more than one plot axis\
-            non-uniform, please choose a different plot option</font>'
-            return x_t, y_t, None
-
-        self.stat_box.text = '<font color="blue">Interpolating...</font>'
-
-        if len(data_t.shape) == 3:
-            is3d = True
-        else:
-            is3d = False
-
-        o_dims = data_t.shape
-
-        # Find the transpose order
-
-        if is3d:
-            if interp_x:
-                t_ord = [0, 1, 2]
-            elif interp_y:
-                t_ord = [0, 2, 1]
-        else:
-            if interp_x:
-                t_ord = [0, 1]
-            elif interp_y:
-                t_ord = [1, 0]
-
-        # Get the interpolant
-
-        if interp_x:
-            ax_v = x_t.copy()
-        else:
-            ax_v = y_t.copy()
-
-        ax_flipped = False
-        if ax_v[1] < ax_v[0]:
-            ax_flipped = True
-            ax_v = numpy.flipud(ax_v)  # Must be increasing for interpolation
-            data_t = self.flip_data(interp_x, is3d, o_dims, data_t)
-
-        try:  # Get interpolation interval if specified
-            ax_int = float(self.interp_int_box.value)
-            self.stat_box.text = '<font color="blue">Interpolating using \
-            specified interval...</font>'
-        except ValueError:
-            ax_int = numpy.min(numpy.diff(ax_v))
-            self.stat_box.text = '<font color="blue">No interval specified: interpolating \
-            using minimum available interval...</font>'
-
-        n_pts = int(numpy.round((ax_v[-1] - ax_v[0])/ax_int)) + 1
-        ax_v_i = numpy.linspace(ax_v[0], ax_v[-1], n_pts)
-        ax_int = ax_v_i[1] - ax_v_i[0]
-        self.interp_int_box.value = str(ax_int)
-
-        # Transpose and flatten for 1d interpolation
-
-        data_v = numpy.transpose(data_t, t_ord).flatten()
-
-        # Interpolate
-
-        nreps = int(data_t.size/ax_v.size)
-        olen = ax_v.size
-        ilen = ax_v_i.size
-        data_v_i = numpy.zeros(ilen*nreps)
-        for rep in range(nreps):
-            data_v_i[rep*ilen:(rep+1)*ilen] = numpy.interp(ax_v_i, ax_v,
-                                                           data_v[rep*olen:(rep+1)*olen])
-
-        # Reshape and re-transpose
-
-        if is3d:
-            if interp_x:
-                i_dims = [o_dims[0], o_dims[1], n_pts]
-            else:
-                i_dims = [o_dims[0], n_pts, o_dims[2]]
-        else:
-            if interp_x:
-                i_dims = [o_dims[0], n_pts]
-            else:
-                i_dims = [n_pts, o_dims[1]]
-
-        i_dims_t = [i_dims[t] for t in t_ord]
-
-        # Reshape to transposed array
-
-        data_t = numpy.reshape(data_v_i, i_dims_t)
-
-        # Transpose back
-
-        data_t = numpy.transpose(data_t, t_ord)
-
-        # Flip the data if needed
-
-        if ax_flipped:
-            ax_v_i = numpy.flipud(ax_v_i)
-            data_t = self.flip_data(interp_x, is3d, o_dims, data_t)
-
-        # Set the axis array and return
-
-        if interp_x:
-            x_t = ax_v_i
-        else:
-            y_t = ax_v_i
-
-        return x_t, y_t, data_t
-
-    @staticmethod
-    def flip_data(interp_x, is3d, o_dims, data_t):
-
-        if interp_x:
-            if is3d:
-                for axi in range(o_dims[0]):
-                    data_t[axi] = numpy.fliplr(data_t[axi])
-            else:
-                data_t = numpy.fliplr(data_t)
-        else:
-            if is3d:
-                for axi in range(o_dims[0]):
-                    data_t[axi] = numpy.flipud(data_t[axi])
-            else:
-                data_t = numpy.flipud(data_t)
-
-        return data_t
-
     def display_data(self):
 
         '''Display the data'''
@@ -730,13 +586,21 @@ class App():
             cfile = None
             print('App warning: colourmap file could not be found: reverting to default palette.')
 
+        try:  # Get non-uniformity tolerance if specified
+            nu_tol = float(self.interp_tol_box.value)
+        except ValueError:
+            nu_tol = 0
+
         if len(self.plot_dims) == 1:
 
             disp = self.display_line_plot(revx, revy)
 
         elif len(self.plot_dims) == 2:
 
-            x_t, y_t, data_t = self.interp_data(x_t, y_t, data_t)
+            x_t, y_t, data_t = interp_data(x_t, y_t, data_t,
+                                           nu_tol=nu_tol,
+                                           stat_box=self.stat_box,
+                                           interp_int_box=self.interp_int_box)
 
             if data_t is not None:
                 disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
@@ -747,7 +611,10 @@ class App():
 
         elif len(self.plot_dims) == 3:
 
-            x_t, y_t, data_t = self.interp_data(x_t, y_t, data_t)
+            x_t, y_t, data_t = interp_data(x_t, y_t, data_t,
+                                           nu_tol=nu_tol,
+                                           stat_box=self.stat_box,
+                                           interp_int_box=self.interp_int_box)
 
             if data_t is not None:
                 disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
