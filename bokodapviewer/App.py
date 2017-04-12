@@ -423,12 +423,12 @@ class App():
                     if av_dims[dim] and (dim != attr):
                         for dim2 in range(num_dims):
                             if av_dims[dim2] and (dim2 != dim) and (dim2 != attr):
-                                opt_dims.append([attr, dim2, dim])
                                 opts.append(self.var_name + ' against ' +
                                             self.ds_select.data['Dimension'][dim] + ' and ' +
                                             self.ds_select.data['Dimension'][dim2] + ' with ' +
                                             self.ds_select.data['Dimension'][attr] + ' as variable ' +
                                             '(colour map with slider)')
+                                opt_dims.append([attr, dim2, dim])
 
         return opts, opt_dims
 

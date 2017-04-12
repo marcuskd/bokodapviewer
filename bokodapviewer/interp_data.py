@@ -59,7 +59,7 @@ def interp_data(x_t, y_t, data_t, nu_tol=0,
         ax_v = y_t.copy()
 
     ax_flipped = False
-    if ax_v[1] < ax_v[0]:
+    if numpy.abs(ax_v[1]) < numpy.abs(ax_v[0]):
         ax_flipped = True
         ax_v = numpy.flipud(ax_v)  # Must be increasing for interpolation
         data_t = flip_data(interp_x, is3d, o_dims, data_t)
@@ -76,15 +76,22 @@ def interp_data(x_t, y_t, data_t, nu_tol=0,
     else:
         interp_auto = True
     if interp_auto:
-        ax_int = numpy.min(numpy.diff(ax_v))
+        ax_int = numpy.min(numpy.abs(numpy.diff(ax_v)))
         if stat_box is not None:
             stat_box.text = '<font color="blue">No interval specified: interpolating \
             using minimum available interval...</font>'
 
+    if ax_v[0] < 0:
+        ax_neg = True
+        ax_v = -ax_v
+    else:
+        ax_neg = False
+
     n_pts = int(numpy.round((ax_v[-1] - ax_v[0])/ax_int)) + 1
     ax_v_i = numpy.linspace(ax_v[0], ax_v[-1], n_pts)
     ax_int = ax_v_i[1] - ax_v_i[0]
-    interp_int_box.value = str(ax_int)
+    if interp_int_box is not None:
+        interp_int_box.value = str(ax_int)
 
     # Transpose and flatten for 1d interpolation
 
@@ -95,10 +102,12 @@ def interp_data(x_t, y_t, data_t, nu_tol=0,
     nreps = int(data_t.size/ax_v.size)
     olen = ax_v.size
     ilen = ax_v_i.size
-    data_v_i = numpy.zeros(ilen*nreps)
+    data_t = numpy.zeros(ilen*nreps)
     for rep in range(nreps):
-        data_v_i[rep*ilen:(rep+1)*ilen] = numpy.interp(ax_v_i, ax_v,
-                                                       data_v[rep*olen:(rep+1)*olen])
+        ostart = rep*olen
+        istart = rep*ilen
+        data_t[istart:istart+ilen] = numpy.interp(ax_v_i, ax_v,
+                                                  data_v[ostart:ostart+olen])
 
     # Reshape and re-transpose
 
@@ -117,7 +126,7 @@ def interp_data(x_t, y_t, data_t, nu_tol=0,
 
     # Reshape to transposed array
 
-    data_t = numpy.reshape(data_v_i, i_dims_t)
+    data_t = numpy.reshape(data_t, i_dims_t)
 
     # Transpose back
 
@@ -128,6 +137,11 @@ def interp_data(x_t, y_t, data_t, nu_tol=0,
     if ax_flipped:
         ax_v_i = numpy.flipud(ax_v_i)
         data_t = flip_data(interp_x, is3d, o_dims, data_t)
+
+    # Change sign if needed
+
+    if ax_neg:
+        ax_v_i = -ax_v_i
 
     # Set the axis array and return
 
