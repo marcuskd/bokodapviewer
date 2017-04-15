@@ -218,7 +218,7 @@ class App():
 
         self.interp_int_box = TextInput(title='Interpolation interval:')
         self.interp_tol_box = TextInput(title='Non-uniform tolerance (%):',
-                                        value='0')
+                                        value='1')
 
         self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[])
         self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[])
