@@ -6,7 +6,7 @@ from ..interp_data import interp_data
 from time import time
 
 
-class Test(unittest.TestCase):
+class InterpTest(unittest.TestCase):
     '''
     Test class for interp_data function.
     '''
