@@ -286,10 +286,13 @@ class App():
             var_types.append(attr[0])
             var_dims.append(attr[1])
             dim_names.append(attr[2])
-        self.ds_dds.data['Variable Name'] = var_names
-        self.ds_dds.data['Type'] = var_types
-        self.ds_dds.data['Dimensions'] = var_dims
-        self.ds_dds.data['Dimension Names'] = dim_names
+
+        odt = OrderedDict()
+        odt['Variable Name'] = var_names
+        odt['Type'] = var_types
+        odt['Dimensions'] = var_dims
+        odt['Dimension Names'] = dim_names
+        self.ds_dds.data = odt
 
         self.get_var_btn.disabled = False
         # Disable these to avoid mismatch between DDS and stored data
@@ -318,9 +321,12 @@ class App():
                 attr_name.append(atrs[1])
                 attr_type.append(atrs[0])
                 attr_val.append(atrs[2])
-            self.ds_das.data['Attribute Name'] = attr_name
-            self.ds_das.data['Type'] = attr_type
-            self.ds_das.data['Value'] = attr_val
+
+            odt = OrderedDict()
+            odt['Attribute Name'] = attr_name
+            odt['Type'] = attr_type
+            odt['Value'] = attr_val
+            self.ds_das.data = odt
 
             # Selection
 
@@ -329,10 +335,13 @@ class App():
             for dim in range(len(dvals)):
                 dmax.append(dvals[dim] - 1)
             dim_name = self.odh.dds[self.var_name][2]
-            self.ds_select.data['Dimension'] = dim_name
-            self.ds_select.data['First Index'] = [0]*len(dvals)
-            self.ds_select.data['Interval'] = [1]*len(dvals)
-            self.ds_select.data['Last Index'] = dmax
+
+            odt = OrderedDict()
+            odt['Dimension'] = dim_name
+            odt['First Index'] = [0]*len(dvals)
+            odt['Interval'] = [1]*len(dvals)
+            odt['Last Index'] = dmax
+            self.ds_select.data = odt
 
             self.p_sel.text = 'Variable: ' + self.var_name
 
@@ -367,6 +376,7 @@ class App():
                 opts, opt_dims = self.get_opts_3d(num_dims, nav, av_dims)
             else:
                 opts = [('None (maximum 3 dimensions - please reduce others to singletons)')]
+                opt_dims = []
 
         self.plot_ops.options = opts
         self.plot_ops.value = opts[0]
