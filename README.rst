@@ -6,6 +6,7 @@ A simple OpenDAP data viewer using Bokeh.
 Run with the bokeh server at the command line: bokeh serve --show App.py
 
 Display data with the following steps:
+
 1. Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be
 loaded and displayed.
 2. Select a variable (i.e. select a row in the DDS table) and press the
@@ -19,10 +20,10 @@ interpolation interval if required (see below).
 the Data Visualisation tab.
 
 NB: In order to avoid errors, all steps must be followed in order, i.e.:
+
 - After opening a new URL, repeat all of steps 2-5 in order.
 - After the selected variable is changed, repeat all of steps 3-5 in order.
-- After selecting new dimensions, press the 'Get plot options' button
-  and repeat step 4 then step 5.
+- After selecting new dimensions, press the 'Get plot options' button and repeat step 4 then step 5.
 
 For 2D images both axes must be on a uniform grid so interpolation will be
 done if one of them is not. If a value is entered into the
