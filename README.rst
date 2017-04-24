@@ -7,17 +7,11 @@ Run with the bokeh server at the command line: bokeh serve --show App.py
 
 Display data with the following steps:
 
-1. Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be
-loaded and displayed.
-2. Select a variable (i.e. select a row in the DDS table) and press the
-'Get variable details' button. The DAS and available dimensions will be
-displayed.
-3. Edit the data dimensions (if required) and press the 'Get plot options'
-button.
-4. Select the required plot option in the drop down and enter an
-interpolation interval if required (see below).
-5. Press the 'Get data' button. The data will be loaded and displayed under
-the Data Visualisation tab.
+1. Enter an OpenDAP URL and press the 'Open URL' button. The DDS will be loaded and displayed.
+2. Select a variable (i.e. select a row in the DDS table) and press the 'Get variable details' button. The DAS and available dimensions will be displayed.
+3. Edit the data dimensions (if required) and press the 'Get plot options' button.
+4. Select the required plot option in the drop down and enter an interpolation interval if required (see below).
+5. Press the 'Get data' button. The data will be loaded and displayed under the Data Visualisation tab.
 
 NB: In order to avoid errors, all steps must be followed in order, i.e.:
 
