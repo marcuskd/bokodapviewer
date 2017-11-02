@@ -9,7 +9,7 @@ import numpy
 from sodapclient import Handler
 
 from bokcolmaps import ColourMap
-from bokcolmaps import ColourMapLPSlider
+from bokcolmaps import CMSlicer
 
 from bokeh.models.widgets.tables import DataTable, TableColumn, IntEditor
 from bokeh.models.widgets.markups import Paragraph, Div
@@ -24,7 +24,7 @@ from bokeh.io import curdoc
 
 from numpy import float32
 
-from bokodapviewer.interp_data import interp_data
+from bokcolmaps.interp_data import interp_data
 
 
 class App():
@@ -222,7 +222,7 @@ class App():
 
         self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[])
         self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[])
-        self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[])
+        self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[0])
 
         self.zmin = TextInput(title='z minimum:')
         self.zmax = TextInput(title='z maximum:')
@@ -252,6 +252,9 @@ class App():
 
         plot_panel = Panel(title='Data Visualisation',
                            child=Column(Figure(toolbar_location=None),
+                                        Div(text='',
+                                            width=self.main_plot_size[1],
+                                            height=100),
                                         wp1, wp2, wp3))
 
         self.tabs = Tabs(tabs=[select_panel, plot_panel])
@@ -627,15 +630,14 @@ class App():
                                            interp_int_box=self.interp_int_box)
 
             if data_t is not None:
-                disp = ColourMapLPSlider(x_t, y_t, self.data[zname], data_t,
-                                         xlab=xname, ylab=yname, zlab=zname,
-                                         dmlab=self.var_name, cfile=cfile,
-                                         cmheight=self.main_plot_size[0],
-                                         cmwidth=self.main_plot_size[1],
-                                         lpheight=self.line_plot_size[0],
-                                         lpwidth=self.line_plot_size[1],
-                                         revz=revz, rmin=rmin_v, rmax=rmax_v,
-                                         hoverdisp=self.hoverdisp3d)
+                disp = CMSlicer(x_t, y_t, self.data[zname], data_t, xlab=xname,
+                                ylab=yname, zlab=zname, dmlab=self.var_name,
+                                cfile=cfile, cmheight=self.main_plot_size[0],
+                                cmwidth=self.main_plot_size[1],
+                                lpheight=self.line_plot_size[0],
+                                lpwidth=self.line_plot_size[1],
+                                revz=revz, rmin=rmin_v, rmax=rmax_v,
+                                hoverdisp=self.hoverdisp3d)
 
         if (len(self.plot_dims) == 1) or (data_t is not None):
             self.tabs.tabs[1].child.children[0] = disp
