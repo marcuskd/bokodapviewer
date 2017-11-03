@@ -10,5 +10,5 @@
     <FillValueName>_FillValue</FillValueName>
     <MissingValueName>missing_value</MissingValueName>
     <CursorReadout2D>On</CursorReadout2D>
-    <CursorReadout3D>Off</CursorReadout3D>
+    <CursorReadout3D>On</CursorReadout3D>
 </Config>

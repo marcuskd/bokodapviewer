@@ -8,7 +8,6 @@ import numpy
 
 from sodapclient import Handler
 
-from bokcolmaps import ColourMap
 from bokcolmaps import CMSlicer
 
 from bokeh.models.widgets.tables import DataTable, TableColumn, IntEditor
@@ -608,7 +607,7 @@ class App():
 
             disp = self.display_line_plot(revx, revy)
 
-        elif len(self.plot_dims) == 2:
+        else:
 
             x_t, y_t, data_t = interp_data(x_t, y_t, data_t,
                                            nu_tol=nu_tol,
@@ -616,21 +615,14 @@ class App():
                                            interp_int_box=self.interp_int_box)
 
             if data_t is not None:
-                disp = ColourMap(x_t, y_t, numpy.array([0]), data_t,
-                                 xlab=xname, ylab=yname, dmlab=self.var_name,
-                                 cfile=cfile, height=self.main_plot_size[0],
-                                 width=self.main_plot_size[1], rmin=rmin_v,
-                                 rmax=rmax_v, hover=self.hoverdisp2d)
 
-        elif len(self.plot_dims) == 3:
+                if len(self.plot_dims) == 3:
+                    z_t = self.data[zname]
+                else:
+                    z_t = numpy.array([0])
+                    zname = None
 
-            x_t, y_t, data_t = interp_data(x_t, y_t, data_t,
-                                           nu_tol=nu_tol,
-                                           stat_box=self.stat_box,
-                                           interp_int_box=self.interp_int_box)
-
-            if data_t is not None:
-                disp = CMSlicer(x_t, y_t, self.data[zname], data_t, xlab=xname,
+                disp = CMSlicer(x_t, y_t, z_t, data_t, xlab=xname,
                                 ylab=yname, zlab=zname, dmlab=self.var_name,
                                 cfile=cfile, cmheight=self.main_plot_size[0],
                                 cmwidth=self.main_plot_size[1],
