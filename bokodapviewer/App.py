@@ -250,7 +250,7 @@ class App():
                              child=Column(ws1, ws2, ws3, ws4))
 
         plot_panel = Panel(title='Data Visualisation',
-                           child=Column(Figure(toolbar_location=None),
+                           child=Column(WidgetBox(Div()),
                                         Div(text='',
                                             width=self.main_plot_size[1],
                                             height=100),
