@@ -158,7 +158,7 @@ class App():
             cols.append(TableColumn(title=item, field=item))
         dds_table = DataTable(source=self.ds_dds, columns=cols, selectable=True,
                               sortable=False, height=self.table_size[0],
-                              width=self.table_size[1], row_headers=False)
+                              width=self.table_size[1], index_position=None)
 
         # DAS table
 
@@ -174,7 +174,7 @@ class App():
         das_table = DataTable(source=self.ds_das, columns=cols,
                               selectable=False, sortable=False,
                               height=self.table_size[0],
-                              width=self.table_size[1], row_headers=False)
+                              width=self.table_size[1], index_position=None)
 
         # Selection table
 
@@ -195,7 +195,7 @@ class App():
         select_table = DataTable(source=self.ds_select, columns=cols,
                                  selectable=True, sortable=True, editable=True,
                                  height=self.table_size[0],
-                                 width=self.table_size[1], row_headers=False)
+                                 width=self.table_size[1], index_position=None)
 
         # Selection and Visualisation panels
 
