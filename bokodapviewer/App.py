@@ -309,7 +309,7 @@ class App():
 
         '''Read variable attributes and dimensions'''
 
-        sel = self.ds_dds.selected['1d']['indices']
+        sel = self.ds_dds.selected.indices
 
         if len(sel) > 0:
 
@@ -340,8 +340,8 @@ class App():
 
             odt = OrderedDict()
             odt['Dimension'] = dim_name
-            odt['First Index'] = [0]*len(dvals)
-            odt['Interval'] = [1]*len(dvals)
+            odt['First Index'] = [0] * len(dvals)
+            odt['Interval'] = [1] * len(dvals)
             odt['Last Index'] = dmax
             self.ds_select.data = odt
 
@@ -450,7 +450,7 @@ class App():
 
         num_dims = len(self.ds_select.data['Dimension'])
 
-        av_dims = [False]*num_dims
+        av_dims = [False] * num_dims
         nav = 0
         for dim in range(num_dims):
             rmin = self.ds_select.data['First Index'][dim]
@@ -641,7 +641,7 @@ class App():
         '''Get the transposed data and axes'''
 
         all_dims = self.data[self.var_name].shape
-        t_dims = [0]*len(all_dims)
+        t_dims = [0] * len(all_dims)
         pd_count = 0
         for dim in range(len(t_dims)):
             if all_dims[dim] == 1:
@@ -686,7 +686,7 @@ class App():
         ydata = self.data[self.var_name]
         ydata = numpy.squeeze(ydata)
 
-        disp.line(x=numpy.linspace(0, ydata.size-1, ydata.size),
+        disp.line(x=numpy.linspace(0, ydata.size - 1, ydata.size),
                   y=ydata, line_color='blue', line_width=2, line_alpha=1)
 
         disp.toolbar_location = 'above'
