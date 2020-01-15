@@ -1,4 +1,6 @@
-'''Main bokodapviewer application class definition'''
+"""
+Main bokodapviewer application class definition
+"""
 
 import os
 from collections import OrderedDict
@@ -8,7 +10,7 @@ import numpy
 
 from sodapclient import Handler
 
-from bokcolmaps import CMSlicer
+from bokcolmaps.CMSlicer import CMSlicer
 
 from bokeh.models.widgets.tables import DataTable, TableColumn, IntEditor
 from bokeh.models.widgets.markups import Paragraph, Div
@@ -28,7 +30,7 @@ from bokcolmaps.interp_data import interp_data
 
 class App():
 
-    '''
+    """
     A simple OpenDAP data viewer using Bokeh.
     Run with the bokeh server at the command line: bokeh serve --show App.py
 
@@ -75,7 +77,7 @@ class App():
     not a plot cursor readout is required. The app can cope with proxy servers:
     create a simple text file with the proxy details (see the sodapclient
     package for the structure) and include the file path in the config file.
-    '''
+    """
 
     def __init__(self):
 
@@ -98,7 +100,9 @@ class App():
 
     def get_config(self):
 
-        '''Read in the xml configuration file'''
+        """
+        Read in the xml configuration file
+        """
 
         root = et.parse(self.config_file).getroot()
 
@@ -136,7 +140,9 @@ class App():
 
     def setup_gui(self):
 
-        '''Set up the GUI elements'''
+        """
+        Set up the GUI elements
+        """
 
         self.url = TextInput(title='OpenDAP URL:')
         self.open_btn = Button(label='Open URL', button_type='primary')
@@ -266,7 +272,9 @@ class App():
 
     def open_url(self):
 
-        '''Open the URL'''
+        """
+        Open the URL
+        """
 
         self.stat_box.text = '<font color="blue">Opening URL...</font>'
 
@@ -307,7 +315,9 @@ class App():
 
     def get_var(self):
 
-        '''Read variable attributes and dimensions'''
+        """
+        Read the variable attributes and dimensions
+        """
 
         sel = self.ds_dds.selected.indices
 
@@ -354,10 +364,10 @@ class App():
 
     def get_plot_opts(self):
 
-        '''
+        """
         Get all the available plot options corresponding to the
-        selected data dimensions.
-        '''
+        selected data dimensions
+        """
 
         num_dims = len(self.ds_select.data['Dimension'])
         if num_dims == 1:
@@ -391,7 +401,9 @@ class App():
 
     def get_opts_1d(self):
 
-        '''Get 1d plot options'''
+        """
+        Get the plot options for the 1D case
+        """
 
         sel = self.ds_dds.selected['1d']['indices'][0]
 
@@ -410,6 +422,10 @@ class App():
 
     def get_opts_2d(self, num_dims, nav, av_dims):
 
+        """
+        Get the plot options for the 2D case
+        """
+
         opts = []
         opt_dims = []
 
@@ -425,6 +441,10 @@ class App():
         return opts, opt_dims
 
     def get_opts_3d(self, num_dims, nav, av_dims):
+
+        """
+        Get the plot options for the 3D case
+        """
 
         opts = []
         opt_dims = []
@@ -446,7 +466,9 @@ class App():
 
     def get_av_dims(self):
 
-        ''' Get available (non-singleton) dimensions'''
+        """
+        Get available (non-singleton) dimensions
+        """
 
         num_dims = len(self.ds_select.data['Dimension'])
 
@@ -466,7 +488,9 @@ class App():
 
     def get_data(self):
 
-        '''Get the variable data'''
+        """
+        Get the variable data
+        """
 
         self.stat_box.text = '<font color="blue">Getting data...</font>'
 
@@ -536,7 +560,9 @@ class App():
 
     def apply_attributes(self, var_name):
 
-        '''Apply the attributes'''
+        """
+        Apply the attributes
+        """
 
         attr_list = self.odh.das[var_name]
 
@@ -568,7 +594,9 @@ class App():
 
     def display_data(self):
 
-        '''Display the data'''
+        """
+        Display the data
+        """
 
         self.stat_box.text = '<font color="blue">Displaying data...</font>'
 
@@ -638,7 +666,9 @@ class App():
 
     def get_trans_data(self, xname, yname, revx, revy):
 
-        '''Get the transposed data and axes'''
+        """
+        Get the transposed data and axes
+        """
 
         all_dims = self.data[self.var_name].shape
         t_dims = [0] * len(all_dims)
@@ -676,7 +706,9 @@ class App():
 
     def display_line_plot(self, revx, revy):
 
-        '''Display a line plot'''
+        """
+        Display a line plot
+        """
 
         disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
                       plot_height=self.line_plot_size[0],
@@ -714,7 +746,9 @@ class App():
 
     def get_cmap_lims(self):
 
-        '''Get the limits for the colourmap'''
+        """
+        Get the limits for the colourmap
+        """
 
         rmin_t, rmax_t = self.zmin.value, self.zmax.value
         rmin_v = rmax_v = None
