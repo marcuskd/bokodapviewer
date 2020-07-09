@@ -18,7 +18,7 @@ from bokeh.models.widgets.panels import Panel, Tabs
 from bokeh.models.widgets.buttons import Button
 from bokeh.models.widgets.inputs import TextInput, Select
 from bokeh.models.widgets import CheckboxGroup
-from bokeh.models.layouts import WidgetBox, Row, Column
+from bokeh.models.layouts import Row, Column
 from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import Figure
 from bokeh.io import curdoc
@@ -105,6 +105,8 @@ class App():
         """
 
         root = et.parse(self.config_file).getroot()
+
+        self.col_map_path = None
 
         for child in root:
 
@@ -256,7 +258,7 @@ class App():
                              child=Column(ws1, ws2, ws3, ws4))
 
         plot_panel = Panel(title='Data Visualisation',
-                           child=Column(WidgetBox(Div()),
+                           child=Column(Column(Div()),
                                         Div(text='',
                                             width=self.main_plot_size[1],
                                             height=100),
@@ -264,10 +266,10 @@ class App():
 
         self.tabs = Tabs(tabs=[select_panel, plot_panel])
 
-        self.gui = Column(children=[WidgetBox(self.url, width=1450),
-                                    WidgetBox(self.open_btn),
-                                    WidgetBox(self.stat_box),
-                                    WidgetBox(Div(text='<hr>', width=1320)),
+        self.gui = Column(children=[Column(self.url, width=1450),
+                                    Column(self.open_btn),
+                                    Column(self.stat_box),
+                                    Column(Div(text='<hr>', width=1320)),
                                     self.tabs])
 
     def open_url(self):
@@ -621,10 +623,13 @@ class App():
 
         rmin_v, rmax_v = self.get_cmap_lims()
 
-        cfile = self.col_map_path + '/jet.txt'
-        if not os.path.exists(cfile):
+        if self.col_map_path is not None:
+            cfile = self.col_map_path
+            if not os.path.exists(cfile):
+                cfile = None
+                print('App warning: colourmap file could not be found: reverting to default palette.')
+        else:
             cfile = None
-            print('App warning: colourmap file could not be found: reverting to default palette.')
 
         try:  # Get non-uniformity tolerance if specified
             nu_tol = float(self.interp_tol_box.value)

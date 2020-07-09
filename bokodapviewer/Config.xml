@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <Config>
     <ProxyFileName>None</ProxyFileName>
-    <ColourMapPath>../bokcolmaps</ColourMapPath>
     <TableSize height='300' width='500'/>
     <MainPlotSize height='500' width='500'/>
     <LinePlotSize height='500' width='250'/>

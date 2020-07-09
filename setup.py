@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='bokodapviewer',
-      version='0.2.4',
+      version='0.3.0',
       description='A simple OpenDAP data viewer based on the Bokeh visualisation library',
       author='Systems Engineering & Assessment Ltd.',
       author_email='Marcus.Donnelly@sea.co.uk',
@@ -19,11 +19,10 @@ setup(name='bokodapviewer',
                 'Science'
                 ],
       packages=find_packages(),
-      install_requires=['numpy >= 1.13',
-                        'bokeh >= 1.2.0',
-                        'sodapclient >= 0.1.0',
-                        'bokcolmaps >= 0.4.5'
+      install_requires=['numpy >= 1.14',
+                        'bokcolmaps >= 2',
+                        'sodapclient >= 0.1.1'
                         ],
-      package_data={'bokodapviewer':['Config.xml'],
+      package_data={'bokodapviewer': ['Config.xml'],
                     },
       )
