@@ -407,7 +407,7 @@ class App():
         Get the plot options for the 1D case
         """
 
-        sel = self.ds_dds.selected['1d']['indices'][0]
+        sel = self.ds_dds.selected.indices[0]
 
         opts = []
         opt_dims = []
@@ -718,7 +718,7 @@ class App():
         disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
                       plot_height=self.line_plot_size[0],
                       plot_width=self.line_plot_size[0],
-                      tools=["reset,pan,resize,wheel_zoom,box_zoom,save"])
+                      tools=["reset,pan,wheel_zoom,box_zoom,save"])
 
         ydata = self.data[self.var_name]
         ydata = numpy.squeeze(ydata)
