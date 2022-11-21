@@ -10,17 +10,18 @@ import numpy
 
 from sodapclient import Handler
 
-from bokcolmaps.CMSlicer import CMSlicer
+from bokcolmaps.CMSlicer2D import CMSlicer2D
+from bokcolmaps.CMSlicer3D import CMSlicer3D
 
 from bokeh.models.widgets.tables import DataTable, TableColumn, IntEditor
 from bokeh.models.widgets.markups import Paragraph, Div
-from bokeh.models.widgets.panels import Panel, Tabs
+from bokeh.models.layouts import TabPanel, Tabs
 from bokeh.models.widgets.buttons import Button
 from bokeh.models.widgets.inputs import TextInput, Select
 from bokeh.models.widgets import CheckboxGroup
 from bokeh.models.layouts import Row, Column
 from bokeh.models.sources import ColumnDataSource
-from bokeh.plotting import Figure
+from bokeh.plotting import figure
 from bokeh.io import curdoc
 
 from numpy import float32
@@ -28,7 +29,7 @@ from numpy import float32
 from bokcolmaps.interp_data import interp_data
 
 
-class App():
+class App:
 
     """
     A simple OpenDAP data viewer using Bokeh.
@@ -110,10 +111,9 @@ class App():
 
         for child in root:
 
-            if child.tag == 'ProxyFileName':
+            proxy_file_name = None
+            if (child.tag == 'ProxyFileName') and (child.text != 'None'):
                 proxy_file_name = child.text
-            if proxy_file_name == 'None':
-                proxy_file_name = None
 
             if child.tag == 'ColourMapPath':
                 self.col_map_path = child.text
@@ -146,8 +146,8 @@ class App():
         Set up the GUI elements
         """
 
-        self.url = TextInput(title='OpenDAP URL:')
-        self.open_btn = Button(label='Open URL', button_type='primary')
+        self.url = TextInput(title='OpenDAP URL:', width=self.table_size[1] * 2 + 10)
+        self.open_btn = Button(label='Open URL', button_type='primary', width=self.table_size[1] // 2)
         self.open_btn.on_click(self.open_url)
 
         # Set up the data and plot selection tables (initially blank)
@@ -207,37 +207,36 @@ class App():
 
         # Selection and Visualisation panels
 
-        self.get_var_btn = Button(label='Get variable details', disabled=True)
+        self.get_var_btn = Button(label='Get variable details', disabled=True, width=self.table_size[1] // 2)
         self.get_var_btn.on_click(self.get_var)
 
         self.p_sel = Paragraph(text='No variable selected.')
 
-        self.get_pltops_btn = Button(label='Get plot options', disabled=True)
+        self.get_pltops_btn = Button(label='Get plot options', disabled=True, width=self.table_size[1] // 2)
         self.get_pltops_btn.on_click(self.get_plot_opts)
 
-        self.plot_ops = Select(options=[])
+        self.plot_ops = Select(options=[], width=self.table_size[1] + 10)
 
         self.get_data_btn = Button(label='Get data', button_type='primary',
-                                   disabled=True)
+                                   disabled=True, width=self.table_size[1] // 2)
         self.get_data_btn.on_click(self.get_data)
 
         self.endian_chkbox = CheckboxGroup(labels=['Big Endian'], active=[0])
 
-        self.interp_int_box = TextInput(title='Interpolation interval:')
-        self.interp_tol_box = TextInput(title='Non-uniform tolerance (%):',
-                                        value='1')
+        self.interp_int_box = TextInput(title='Interpolation interval:', width=self.table_size[1] // 2)
+        self.interp_tol_box = TextInput(title='Non-uniform tolerance (%):', value='1', width=self.table_size[1] // 2)
 
-        self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[])
-        self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[])
-        self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[0])
+        self.revx_chkbox = CheckboxGroup(labels=['Reverse x axis'], active=[], width=self.table_size[1] // 2)
+        self.revy_chkbox = CheckboxGroup(labels=['Reverse y axis'], active=[], width=self.table_size[1] // 2)
+        self.revz_chkbox = CheckboxGroup(labels=['Reverse z axis'], active=[0], width=self.table_size[1] // 2)
 
-        self.zmin = TextInput(title='z minimum:')
-        self.zmax = TextInput(title='z maximum:')
+        self.zmin = TextInput(title='z minimum:', width=self.table_size[1] // 2)
+        self.zmax = TextInput(title='z maximum:', width=self.table_size[1] // 2)
 
         self.stat_box = Div(text='<font color="green">Initialised OK</font>',
-                            width=800)
+                            width=self.table_size[1] * 2)
 
-        self.update_btn = Button(label='Update Display')
+        self.update_btn = Button(label='Update Display', width=self.table_size[1] // 2)
         self.update_btn.on_click(self.display_data)
 
         ws1 = Row(children=[Column(Div(text='<font color="blue">Dataset Descriptor Structure'),
@@ -254,15 +253,11 @@ class App():
                             self.revz_chkbox])
         wp3 = Row(children=[self.update_btn])
 
-        select_panel = Panel(title='Data Selection',
-                             child=Column(ws1, ws2, ws3, ws4))
+        select_panel = TabPanel(title='Data Selection', child=Column(ws1, ws2, ws3, ws4))
 
-        plot_panel = Panel(title='Data Visualisation',
-                           child=Column(Column(Div()),
-                                        Div(text='',
-                                            width=self.main_plot_size[1],
-                                            height=100),
-                                        wp1, wp2, wp3))
+        plot_panel = TabPanel(title='Data Visualisation', child=Column(Column(Div()),
+                              Div(text='', width=self.main_plot_size[1], height=100),
+                              wp1, wp2, wp3))
 
         self.tabs = Tabs(tabs=[select_panel, plot_panel])
 
@@ -372,6 +367,7 @@ class App():
         """
 
         num_dims = len(self.ds_select.data['Dimension'])
+        opt_dims = None
         if num_dims == 1:
             nav, opts, opt_dims = self.get_opts_1d()
         else:
@@ -385,9 +381,9 @@ class App():
                         ' (line plot)')]
                 opt_dims = [attr]
             elif nav == 2:
-                opts, opt_dims = self.get_opts_2d(num_dims, nav, av_dims)
+                opts, opt_dims = self.get_opts_2d(num_dims, av_dims)
             elif nav == 3:
-                opts, opt_dims = self.get_opts_3d(num_dims, nav, av_dims)
+                opts, opt_dims = self.get_opts_3d(num_dims, av_dims)
             else:
                 opts = [('None (maximum 3 dimensions - please reduce others to singletons)')]
                 opt_dims = []
@@ -422,7 +418,7 @@ class App():
 
         return nav, opts, opt_dims
 
-    def get_opts_2d(self, num_dims, nav, av_dims):
+    def get_opts_2d(self, num_dims, av_dims):
 
         """
         Get the plot options for the 2D case
@@ -442,7 +438,7 @@ class App():
 
         return opts, opt_dims
 
-    def get_opts_3d(self, num_dims, nav, av_dims):
+    def get_opts_3d(self, num_dims, av_dims):
 
         """
         Get the plot options for the 3D case
@@ -602,6 +598,7 @@ class App():
 
         self.stat_box.text = '<font color="blue">Displaying data...</font>'
 
+        xname = yname = zname = None
         if len(self.plot_dims) == 2:
             xname = self.ds_select.data['Dimension'][self.plot_dims[1]]
             yname = self.ds_select.data['Dimension'][self.plot_dims[0]]
@@ -618,6 +615,7 @@ class App():
         if len(self.revz_chkbox.active) > 0:
             revz = True
 
+        x_t = y_t = data_t = None
         if len(self.plot_dims) > 1:
             x_t, y_t, data_t = self.get_trans_data(xname, yname, revx, revy)
 
@@ -636,33 +634,44 @@ class App():
         except ValueError:
             nu_tol = 0
 
+        disp = None
+
         if len(self.plot_dims) == 1:
 
             disp = self.display_line_plot(revx, revy)
 
         else:
 
-            x_t, y_t, data_t = interp_data(x_t, y_t, data_t,
-                                           nu_tol=nu_tol,
-                                           stat_box=self.stat_box,
-                                           interp_int_box=self.interp_int_box)
+            try:  # Get interpolation interval if specified
+                ax_int = float(self.interp_int_box.value)
+            except ValueError:
+                ax_int = None
+
+            x_t, y_t, data_t, ax_int, msg = interp_data(x_t, y_t, data_t, nu_tol=nu_tol, ax_int=ax_int)
+
+            if msg is not None:
+                self.stat_box.text = msg
+
+            if ax_int is not None:
+                self.interp_int_box.value = str(ax_int)
 
             if data_t is not None:
 
-                if len(self.plot_dims) == 3:
-                    z_t = self.data[zname]
-                else:
-                    z_t = numpy.array([0])
-                    zname = None
+                if len(self.plot_dims) == 2:
 
-                disp = CMSlicer(x_t, y_t, z_t, data_t, xlab=xname,
-                                ylab=yname, zlab=zname, dmlab=self.var_name,
-                                cfile=cfile, cmheight=self.main_plot_size[0],
-                                cmwidth=self.main_plot_size[1],
-                                lpheight=self.line_plot_size[0],
-                                lpwidth=self.line_plot_size[1],
-                                revz=revz, rmin=rmin_v, rmax=rmax_v,
-                                hoverdisp=self.hoverdisp3d)
+                    disp = CMSlicer2D(x_t, y_t, numpy.array([0]), data_t,
+                                      xlab=xname, ylab=yname, zlab=zname, dmlab=self.var_name,
+                                      cfile=cfile, cmheight=self.main_plot_size[0], cmwidth=self.main_plot_size[1],
+                                      lpheight=self.line_plot_size[0], lpwidth=self.line_plot_size[1],
+                                      rmin=rmin_v, rmax=rmax_v)
+
+                elif len(self.plot_dims) == 3:
+
+                    disp = CMSlicer3D(x_t, y_t, self.data[zname], data_t,
+                                      xlab=xname, ylab=yname, zlab=zname, dmlab=self.var_name,
+                                      cfile=cfile, cmheight=self.main_plot_size[0], cmwidth=self.main_plot_size[1],
+                                      lpheight=self.line_plot_size[0], lpwidth=self.line_plot_size[1],
+                                      rmin=rmin_v, rmax=rmax_v, revz=revz, hoverdisp=self.hoverdisp3d)
 
         if (len(self.plot_dims) == 1) or (data_t is not None):
             self.tabs.tabs[1].child.children[0] = disp
@@ -715,9 +724,8 @@ class App():
         Display a line plot
         """
 
-        disp = Figure(x_axis_label='Index', y_axis_label=self.var_name,
-                      plot_height=self.line_plot_size[0],
-                      plot_width=self.line_plot_size[0],
+        disp = figure(x_axis_label='Index', y_axis_label=self.var_name,
+                      height=self.line_plot_size[0], width=self.line_plot_size[0],
                       tools=["reset,pan,wheel_zoom,box_zoom,save"])
 
         ydata = self.data[self.var_name]

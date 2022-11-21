@@ -1,7 +1,5 @@
 /build
 /dist
-.project
-.pydevproject
+.idea
 /bokodapviewer.egg-info
 __pycache__/
-
