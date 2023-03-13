@@ -124,6 +124,9 @@ class App:
             if child.tag == 'MainPlotSize':
                 self.main_plot_size = [int(child.attrib['height']),
                                        int(child.attrib['width'])]
+            if child.tag == 'SlicePlotSize':
+                self.slice_plot_size = [int(child.attrib['height']),
+                                       int(child.attrib['width'])]
             if child.tag == 'LinePlotSize':
                 self.line_plot_size = [int(child.attrib['height']),
                                        int(child.attrib['width'])]
@@ -662,7 +665,7 @@ class App:
                     disp = CMSlicer2D(x_t, y_t, numpy.array([0]), data_t,
                                       xlab=xname, ylab=yname, zlab=zname, dmlab=self.var_name,
                                       cfile=cfile, cmheight=self.main_plot_size[0], cmwidth=self.main_plot_size[1],
-                                      lpheight=self.line_plot_size[0], lpwidth=self.line_plot_size[1],
+                                      spheight=self.slice_plot_size[0], spwidth=self.slice_plot_size[1],
                                       rmin=rmin_v, rmax=rmax_v)
 
                 elif len(self.plot_dims) == 3:
@@ -670,7 +673,9 @@ class App:
                     disp = CMSlicer3D(x_t, y_t, self.data[zname], data_t,
                                       xlab=xname, ylab=yname, zlab=zname, dmlab=self.var_name,
                                       cfile=cfile, cmheight=self.main_plot_size[0], cmwidth=self.main_plot_size[1],
+                                      spheight=self.slice_plot_size[0], spwidth=self.slice_plot_size[1],
                                       lpheight=self.line_plot_size[0], lpwidth=self.line_plot_size[1],
+                                      padabove=self.main_plot_size[0] // 10, padleft=self.main_plot_size[1] // 10,
                                       rmin=rmin_v, rmax=rmax_v, revz=revz, hoverdisp=self.hoverdisp3d)
 
         if (len(self.plot_dims) == 1) or (data_t is not None):
