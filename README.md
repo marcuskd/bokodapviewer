@@ -1,8 +1,10 @@
-bokodapviewer
+# bokodapviewer
+
+### A simple OpenDAP data viewer using Bokeh
+
 
 -------------
 
-A simple OpenDAP data viewer using Bokeh.
 Run with the bokeh server at the command line: bokeh serve --show App.py
 
 Display data with the following steps:
